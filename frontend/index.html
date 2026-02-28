@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>QuantumML — Control Centre</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080a;--surface:#0d1117;--surface2:#131b24;--border:#1c2736;--border2:#253347;
+  --sim:#22d3ee;--noisy:#4ade80;--real:#fb923c;--danger:#f87171;--purple:#a78bfa;
+  --text:#e2e8f0;--muted:#3d566e;--muted2:#5d7d96;
+  --gsim:rgba(34,211,238,.1);--gnoisy:rgba(74,222,128,.1);--greal:rgba(251,146,60,.1);
+  --font-d:'Bebas Neue',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'DM Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:14px;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* bg */
+.bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(34,211,238,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,238,.022) 1px,transparent 1px);
+  background-size:48px 48px}
+.bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 40% at 50% 0%,rgba(34,211,238,.06),transparent)}
+
+/* layout */
+.app{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;
+  border-bottom:1px solid var(--border);background:rgba(7,8,10,.9);backdrop-filter:blur(16px);flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:30px;height:30px;border:1.5px solid var(--sim);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  box-shadow:0 0 14px rgba(34,211,238,.25);animation:glow 3s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 8px rgba(34,211,238,.2)}50%{box-shadow:0 0 22px rgba(34,211,238,.45)}}
+.logo-text{font-family:var(--font-d);font-size:22px;letter-spacing:2px;color:#fff}
+.logo-text span{color:var(--sim)}
+.topbar-r{display:flex;align-items:center;gap:14px}
+.api-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s}
+.api-dot.ok{background:var(--noisy);box-shadow:0 0 7px rgba(74,222,128,.6);animation:blink 2s infinite}
+.api-dot.err{background:var(--danger)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+#apiStatus{font-family:var(--font-m);font-size:11px;color:var(--muted2)}
+#apiUrl{background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:5px 10px;color:var(--muted2);font-family:var(--font-m);font-size:11px;width:195px;outline:none;transition:.2s}
+#apiUrl:focus{border-color:var(--sim);color:var(--text)}
+
+/* health bar */
+.hbar{display:flex;align-items:center;gap:20px;padding:6px 24px;border-bottom:1px solid var(--border);
+  background:var(--surface);font-family:var(--font-m);font-size:10px;color:var(--muted2);flex-shrink:0}
+.hb{display:flex;align-items:center;gap:5px}
+.hd{width:5px;height:5px;border-radius:50%;background:var(--muted)}
+.hd.on{background:var(--noisy)}
+.hd.warn{background:var(--real)}
+.hbar-r{margin-left:auto;color:var(--muted)}
+
+/* main 3-col */
+.main{display:grid;grid-template-columns:252px 1fr 308px;flex:1;overflow:hidden}
+
+/* sidebar */
+.sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--surface)}
+.sb-sec{padding:18px 14px 0}
+.sec-lbl{font-family:var(--font-m);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-left:2px}
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+/* mode cards */
+.mc{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:8px;
+  border:1px solid transparent;cursor:pointer;margin-bottom:6px;transition:.18s;position:relative;overflow:hidden}
+.mc::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .18s;border-radius:8px}
+.mc.sim::before{background:var(--gsim)}.mc.noisy::before{background:var(--gnoisy)}.mc.real::before{background:var(--greal)}
+.mc:hover{border-color:var(--border2)}.mc:hover::before{opacity:1}
+.mc.active::before{opacity:1}
+.mc.active.sim{border-color:var(--sim)}.mc.active.noisy{border-color:var(--noisy)}.mc.active.real{border-color:var(--real)}
+.mc-ico{font-size:18px;width:26px;text-align:center}
+.mc-info{flex:1}
+.mc-name{font-weight:600;font-size:13px;color:var(--text);margin-bottom:2px}
+.mc-tag{font-family:var(--font-m);font-size:9px;padding:1px 5px;border-radius:3px}
+.ts{background:rgba(34,211,238,.12);color:var(--sim)}
+.tn{background:rgba(74,222,128,.12);color:var(--noisy)}
+.tr{background:rgba(251,146,60,.12);color:var(--real)}
+.mc-chk{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:8px;color:transparent;transition:.18s}
+.mc.active .mc-chk{color:#000}
+.mc.active.sim .mc-chk{background:var(--sim);border-color:var(--sim)}
+.mc.active.noisy .mc-chk{background:var(--noisy);border-color:var(--noisy)}
+.mc.active.real .mc-chk{background:var(--real);border-color:var(--real)}
+
+/* sliders */
+.ctrl{display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-bottom:8px}
+.cl{font-size:12px;color:var(--muted2)}.cv{font-family:var(--font-m);font-size:12px;color:var(--sim)}
+input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;background:var(--border2);outline:none;margin-bottom:12px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--sim);cursor:pointer;box-shadow:0 0 7px rgba(34,211,238,.5);transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
+
+/* async toggle */
+.atrow{display:flex;align-items:center;gap:9px;padding:0 2px;margin-bottom:10px}
+.atog{width:34px;height:18px;border-radius:9px;background:var(--border2);position:relative;cursor:pointer;transition:.2s;border:none;flex-shrink:0}
+.atog::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:.2s}
+.atog.on{background:rgba(251,146,60,.3)}.atog.on::after{left:18px;background:var(--real)}
+.atlbl{font-size:11px;color:var(--muted2)}
+
+/* qubit list */
+.ql{display:flex;flex-direction:column;gap:7px}
+.qr{background:var(--surface2);border:1px solid var(--border);border-radius:7px;
+  padding:9px 11px;display:grid;grid-template-columns:22px 1fr 1fr;gap:7px;align-items:center}
+.qlbl{font-family:var(--font-m);font-size:10px;color:var(--sim)}
+.qi{background:transparent;border:none;border-bottom:1px solid var(--border2);color:var(--text);
+  font-family:var(--font-m);font-size:11px;padding:2px 4px;outline:none;width:100%;transition:.15s}
+.qi:focus{border-color:var(--sim)}
+.qa{display:flex;gap:6px;margin-top:8px}
+.bx{flex:1;padding:6px 0;border-radius:6px;font-family:var(--font-m);font-size:10px;cursor:pointer;border:1px solid;transition:.15s;text-align:center}
+.ba{border-color:var(--border2);color:var(--sim);background:transparent}.ba:hover{background:rgba(34,211,238,.1)}
+.br{border-color:var(--border2);color:var(--danger);background:transparent}.br:hover{background:rgba(248,113,113,.1)}
+
+/* centre */
+.centre{display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.tab{padding:13px 18px;font-size:12px;font-weight:500;color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+.tab:hover{color:var(--text)}.tab.active{color:var(--sim);border-bottom-color:var(--sim)}
+.tc{display:none;flex:1;overflow-y:auto;padding:22px;flex-direction:column;gap:18px}
+.tc.active{display:flex}
+
+/* circuit canvas */
+.cw{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+.ct{font-family:var(--font-m);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+#circuitCanvas{width:100%;height:128px;display:block}
+
+/* run button */
+.rbtn{width:100%;padding:15px;background:transparent;border:1.5px solid var(--sim);border-radius:10px;
+  color:var(--sim);font-family:var(--font-d);font-size:22px;letter-spacing:3px;cursor:pointer;
+  position:relative;overflow:hidden;transition:color .2s}
+.rbtn::after{content:'';position:absolute;inset:0;background:var(--sim);transform:translateY(101%);transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.rbtn:hover{color:#000}.rbtn:hover::after{transform:translateY(0)}
+.rbtn span{position:relative;z-index:1}
+.rbtn.loading{border-color:var(--muted);color:var(--muted);pointer-events:none}
+.rbtn.loading::after{display:none}
+.rbtn.nm{border-color:var(--noisy);color:var(--noisy)}.rbtn.nm::after{background:var(--noisy)}
+.rbtn.rm{border-color:var(--real);color:var(--real)}.rbtn.rm::after{background:var(--real)}
+
+/* quick cards */
+.qgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.qcard{background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:14px 11px;cursor:pointer;transition:.15s;text-align:center}
+.qcard:hover{border-color:var(--border2);transform:translateY(-2px)}
+.qcard:active{transform:none}
+.qi2{font-size:22px;margin-bottom:6px}
+.qn{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px}
+.qd{font-size:10px;color:var(--muted2);line-height:1.5}
+
+/* train */
+.tcfg{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+.tr2{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.tl{font-size:12px;color:var(--muted2)}.tv{font-family:var(--font-m);font-size:12px;color:var(--noisy)}
+.tbtn{width:100%;padding:13px;background:transparent;border:1.5px solid var(--noisy);border-radius:10px;
+  color:var(--noisy);font-family:var(--font-d);font-size:20px;letter-spacing:3px;cursor:pointer;
+  position:relative;overflow:hidden;transition:color .2s;margin-top:8px}
+.tbtn::after{content:'';position:absolute;inset:0;background:var(--noisy);transform:translateY(101%);transition:transform .25s cubic-bezier(.16,1,.3,1)}
+.tbtn:hover{color:#000}.tbtn:hover::after{transform:translateY(0)}
+.tbtn span{position:relative;z-index:1}
+.tbtn.loading{border-color:var(--muted);color:var(--muted);pointer-events:none}.tbtn.loading::after{display:none}
+.lcw{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+#lossCanvas{width:100%;height:140px;display:block}
+
+/* right panel */
+.rp{display:flex;flex-direction:column;overflow:hidden;background:var(--surface)}
+.ph{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pt{font-family:var(--font-m);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.clrbtn{font-family:var(--font-m);font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;transition:.15s}
+.clrbtn:hover{color:var(--danger)}
+.rb{flex:1;overflow-y:auto;padding:14px}
+
+/* result card */
+.rc{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:13px;margin-bottom:9px;animation:si .28s ease}
+@keyframes si{from{opacity:0;transform:translateY(-7px)}to{opacity:1;transform:translateY(0)}}
+.rch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px}
+.rid{font-family:var(--font-m);font-size:11px;color:var(--sim)}
+.rbadge{font-family:var(--font-m);font-size:9px;padding:2px 7px;border-radius:10px}
+.bc{background:rgba(74,222,128,.12);color:var(--noisy)}
+.bf{background:rgba(248,113,113,.12);color:var(--danger)}
+.bq{background:rgba(251,146,60,.12);color:var(--real)}
+.brun{background:rgba(34,211,238,.12);color:var(--sim);animation:blink 1.5s infinite}
+.rmeta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px}
+.mp{font-family:var(--font-m);font-size:9px;padding:2px 7px;border-radius:10px;background:var(--surface);border:1px solid var(--border);color:var(--muted2)}
+.mp b{color:var(--text)}
+
+/* histogram */
+.hist{display:flex;gap:3px;align-items:flex-end;height:58px;margin-top:4px}
+.hbw{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.hb2{width:100%;border-radius:3px 3px 0 0;min-height:3px;transition:height .5s cubic-bezier(.16,1,.3,1);cursor:pointer;position:relative}
+.hb2:hover::after{content:attr(data-tip);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);
+  background:var(--surface2);border:1px solid var(--border2);padding:3px 6px;border-radius:4px;
+  font-family:var(--font-m);font-size:9px;color:var(--text);white-space:nowrap;z-index:10}
+.hl{font-family:var(--font-m);font-size:8px;color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+
+/* job list */
+.ji{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
+  border-left:2px solid var(--border);background:var(--surface2);margin-bottom:6px;
+  font-size:11px;cursor:pointer;transition:.2s}
+.ji:hover{border-color:var(--border2)}
+.ji.completed{border-left-color:var(--noisy)}.ji.failed{border-left-color:var(--danger)}
+.ji.queued{border-left-color:var(--real)}.ji.running{border-left-color:var(--sim)}
+.jid{font-family:var(--font-m);font-size:10px;color:var(--muted2);flex:1}
+.jbe{font-size:10px;color:var(--text)}
+.jsb{font-family:var(--font-m);font-size:9px;padding:1px 6px;border-radius:8px}
+
+/* empty */
+.empty{text-align:center;padding:38px 18px;color:var(--muted);font-size:12px}
+.ei{font-size:28px;opacity:.3;margin-bottom:8px}
+
+/* spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.sp{display:inline-block;width:13px;height:13px;border:2px solid var(--muted);
+  border-top-color:var(--sim);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-left:7px}
+
+/* toast */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+  padding:9px 18px;font-family:var(--font-m);font-size:11px;color:var(--sim);
+  z-index:999;opacity:0;transition:.28s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{color:var(--danger);border-color:rgba(248,113,113,.3)}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow"></div>
+<div class="app">
+
+<!-- topbar -->
+<nav class="topbar">
+  <div class="logo">
+    <div class="logo-icon">⚛</div>
+    <div class="logo-text">QUANTUM<span>ML</span></div>
+  </div>
+  <div class="topbar-r">
+    <div class="api-dot" id="apiDot"></div>
+    <span id="apiStatus">Connecting…</span>
+    <input id="apiUrl" value="http://localhost:8000" placeholder="API URL"/>
+  </div>
+</nav>
+
+<!-- health bar -->
+<div class="hbar">
+  <div class="hb"><div class="hd" id="hdSim"></div><span>simulator</span></div>
+  <div class="hb"><div class="hd" id="hdNoisy"></div><span>noisy_simulator</span></div>
+  <div class="hb"><div class="hd" id="hdReal"></div><span id="hbRealTxt">real (no token)</span></div>
+  <span class="hbar-r" id="hbJobs">0 jobs</span>
+</div>
+
+<!-- main -->
+<div class="main">
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-sec">
+      <div class="sec-lbl">Backend Mode</div>
+      <div class="mc sim active" onclick="setMode('simulator',this)">
+        <div class="mc-ico">🖥️</div>
+        <div class="mc-info"><div class="mc-name">Simulator</div><div class="mc-tag ts">INSTANT · NO TOKEN</div></div>
+        <div class="mc-chk">✓</div>
+      </div>
+      <div class="mc noisy" onclick="setMode('noisy_simulator',this)">
+        <div class="mc-ico">📡</div>
+        <div class="mc-info"><div class="mc-name">Noisy Sim</div><div class="mc-tag tn">T1/T2 + READOUT NOISE</div></div>
+        <div class="mc-chk">✓</div>
+      </div>
+      <div class="mc real" onclick="setMode('real',this)">
+        <div class="mc-ico">⚛️</div>
+        <div class="mc-info"><div class="mc-name">IBM Quantum</div><div class="mc-tag tr">REAL HARDWARE · TOKEN REQ</div></div>
+        <div class="mc-chk">✓</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sb-sec">
+      <div class="sec-lbl">Execution</div>
+      <div class="ctrl"><span class="cl">Shots</span><span class="cv" id="shotsVal">1024</span></div>
+      <input type="range" id="shotsR" min="64" max="8192" step="64" value="1024"
+        oninput="document.getElementById('shotsVal').textContent=this.value">
+      <div class="ctrl"><span class="cl">Opt Level</span><span class="cv" id="optVal">1</span></div>
+      <input type="range" id="optR" min="0" max="3" step="1" value="1"
+        oninput="document.getElementById('optVal').textContent=this.value">
+      <div class="atrow" id="asyncRow" style="display:none">
+        <button class="atog" id="aToggle" onclick="toggleAsync()"></button>
+        <span class="atlbl">Async mode (submit &amp; poll)</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sb-sec" style="padding-bottom:20px">
+      <div class="sec-lbl">Qubits <span style="color:var(--muted2);font-weight:400">(x = input · θ = param)</span></div>
+      <div class="ql" id="qubitList"></div>
+      <div class="qa">
+        <button class="bx ba" onclick="addQubit()">+ ADD</button>
+        <button class="bx br" onclick="removeQubit()">− REMOVE</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CENTRE -->
+  <main class="centre">
+    <div class="tabs">
+      <div class="tab active" data-tab="run">▶ Run Circuit</div>
+      <div class="tab" data-tab="quick">⚡ Quick Circuits</div>
+      <div class="tab" data-tab="train">🧠 Train</div>
+      <div class="tab" data-tab="alljobs">📋 All Jobs</div>
+    </div>
+
+    <!-- RUN -->
+    <div class="tc active" id="tab-run">
+      <div class="cw">
+        <div class="ct">◈ Circuit Preview</div>
+        <canvas id="circuitCanvas"></canvas>
+      </div>
+      <button class="rbtn" id="runBtn" onclick="runCircuit()">
+        <span id="runBtnTxt">▶ EXECUTE CIRCUIT</span>
+      </button>
+    </div>
+
+    <!-- QUICK -->
+    <div class="tc" id="tab-quick">
+      <p style="font-size:13px;color:var(--muted2);line-height:1.8">
+        One-click benchmark circuits. Results appear in the right panel instantly.
+      </p>
+      <div class="qgrid">
+        <div class="qcard" onclick="runQuick('bell',2)">
+          <div class="qi2">🔔</div>
+          <div class="qn">Bell State</div>
+          <div class="qd">~50% |00⟩ + ~50% |11⟩ — basic entanglement check</div>
+        </div>
+        <div class="qcard" onclick="runQuick('ghz',3)">
+          <div class="qi2">🌐</div>
+          <div class="qn">GHZ 3Q</div>
+          <div class="qd">3-qubit max entanglement — multi-qubit coherence test</div>
+        </div>
+        <div class="qcard" onclick="runQuick('ghz',5)">
+          <div class="qi2">🌐</div>
+          <div class="qn">GHZ 5Q</div>
+          <div class="qd">5-qubit GHZ — noise sensitivity stress test</div>
+        </div>
+        <div class="qcard" onclick="runQuick('variational',2)">
+          <div class="qi2">🔁</div>
+          <div class="qn">Variational 2Q</div>
+          <div class="qd">Random variational bottleneck on 2 qubits</div>
+        </div>
+        <div class="qcard" onclick="runQuick('variational',4)">
+          <div class="qi2">🔁</div>
+          <div class="qn">Variational 4Q</div>
+          <div class="qd">Random variational bottleneck on 4 qubits</div>
+        </div>
+        <div class="qcard" onclick="benchmarkAll()">
+          <div class="qi2">📊</div>
+          <div class="qn">Benchmark All</div>
+          <div class="qd">Run Bell + GHZ3 + Variational2 in sequence</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRAIN -->
+    <div class="tc" id="tab-train">
+      <p style="font-size:13px;color:var(--muted2);line-height:1.8">
+        Optimises <b style="color:var(--text)">θ parameters</b> using the
+        <b style="color:var(--text)">parameter shift rule</b> — analytic gradients,
+        no backprop required. Always runs on the local simulator.
+      </p>
+      <div class="tcfg">
+        <div class="sec-lbl" style="margin-bottom:12px">Training Config</div>
+        <div class="tr2"><span class="tl">Max iterations</span><span class="tv" id="tiVal">50</span></div>
+        <input type="range" id="tiR" min="10" max="200" step="10" value="50"
+          oninput="document.getElementById('tiVal').textContent=this.value" style="margin-bottom:14px">
+        <div class="tr2"><span class="tl">Learning rate</span><span class="tv" id="tlrVal">0.010</span></div>
+        <input type="range" id="tlrR" min="1" max="50" step="1" value="10"
+          oninput="document.getElementById('tlrVal').textContent=(this.value/1000).toFixed(3)" style="margin-bottom:4px">
+        <button class="tbtn" id="trainBtn" onclick="startTraining()">
+          <span id="trainBtnTxt">▶ START TRAINING</span>
+        </button>
+      </div>
+      <div class="lcw" id="lossWrap" style="display:none">
+        <div class="ct">◈ Loss Curve</div>
+        <canvas id="lossCanvas"></canvas>
+        <div id="trainStats" style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+
+    <!-- ALL JOBS -->
+    <div class="tc" id="tab-alljobs">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;color:var(--muted2)">All jobs submitted this session</span>
+        <button onclick="clearAllJobs()" style="font-family:var(--font-m);font-size:10px;color:var(--danger);background:none;border:none;cursor:pointer;padding:4px 8px">CLEAR ALL</button>
+      </div>
+      <div id="allJobsList"></div>
+    </div>
+
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="rp">
+    <div class="ph">
+      <span class="pt">◈ Results</span>
+      <button class="clrbtn" onclick="clearResults()">CLEAR</button>
+    </div>
+    <div class="rb" id="resultsBody">
+      <div class="empty"><div class="ei">◌</div>Run a circuit to see<br>measurement results here</div>
+    </div>
+  </aside>
+
+</div><!-- .main -->
+</div><!-- .app -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── state ──────────────────────────────────────────────────────────────────
+let MODE      = 'simulator';
+let ASYNC     = false;
+let qubits    = [{x:1.2,t:0.8},{x:0.5,t:1.3}];
+let jobs      = [];
+let polls     = {};
+const COLORS  = {simulator:'#22d3ee',noisy_simulator:'#4ade80',real:'#fb923c'};
+const C2      = {simulator:'#7c3aed',noisy_simulator:'#059669',real:'#c2410c'};
+
+const api = () => document.getElementById('apiUrl').value.replace(/\/$/,'');
+
+// ── health ─────────────────────────────────────────────────────────────────
+async function checkHealth(){
+  const dot=document.getElementById('apiDot'), st=document.getElementById('apiStatus');
+  try{
+    const r=await fetch(`${api()}/health`,{signal:AbortSignal.timeout(3000)});
+    const d=await r.json();
+    dot.className='api-dot ok';
+    st.textContent=`online · ${d.job_count} jobs`;
+    document.getElementById('hdSim').className='hd on';
+    document.getElementById('hdNoisy').className='hd on';
+    document.getElementById('hdReal').className=d.ibm_token_configured?'hd on':'hd warn';
+    document.getElementById('hbRealTxt').textContent=d.ibm_token_configured?'real ✓':'real (no token)';
+    document.getElementById('hbJobs').textContent=`${d.job_count} jobs`;
+  }catch{
+    dot.className='api-dot err';
+    st.textContent='API offline';
+  }
+}
+setInterval(checkHealth,6000); checkHealth();
+document.getElementById('apiUrl').addEventListener('change',checkHealth);
+
+// ── tabs ───────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tc').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-'+t.dataset.tab)?.classList.add('active');
+  });
+});
+
+// ── mode ───────────────────────────────────────────────────────────────────
+function setMode(m,el){
+  MODE=m;
+  document.querySelectorAll('.mc').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const btn=document.getElementById('runBtn');
+  btn.className='rbtn'+({simulator:'',noisy_simulator:' nm',real:' rm'}[m]||'');
+  document.getElementById('asyncRow').style.display=m==='real'?'flex':'none';
+  drawCircuit();
+}
+
+// ── async ──────────────────────────────────────────────────────────────────
+function toggleAsync(){
+  ASYNC=!ASYNC;
+  document.getElementById('aToggle').classList.toggle('on',ASYNC);
+}
+
+// ── qubits ─────────────────────────────────────────────────────────────────
+function renderQubits(){
+  document.getElementById('qubitList').innerHTML=qubits.map((q,i)=>`
+    <div class="qr">
+      <span class="qlbl">q${i}</span>
+      <input class="qi" type="number" step="0.01" value="${q.x.toFixed(2)}"
+        oninput="qubits[${i}].x=parseFloat(this.value)||0;drawCircuit()" placeholder="x">
+      <input class="qi" type="number" step="0.01" value="${q.t.toFixed(2)}"
+        oninput="qubits[${i}].t=parseFloat(this.value)||0;drawCircuit()" placeholder="θ">
+    </div>`).join('');
+  drawCircuit();
+}
+
+function addQubit(){
+  if(qubits.length>=10)return toast('Max 10 qubits',1);
+  qubits.push({x:+(Math.random()*2).toFixed(2),t:+(Math.random()*2).toFixed(2)});
+  renderQubits();
+}
+function removeQubit(){
+  if(qubits.length<=1)return toast('Need at least 1 qubit',1);
+  qubits.pop(); renderQubits();
+}
+
+// ── circuit canvas ─────────────────────────────────────────────────────────
+function drawCircuit(){
+  const cv=document.getElementById('circuitCanvas'); if(!cv)return;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=cv.offsetWidth*dpr; cv.height=cv.offsetHeight*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  const W=cv.offsetWidth,H=cv.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+  const n=qubits.length; if(!n)return;
+  const rH=Math.min((H-20)/n,30), sy=(H-rH*n)/2+rH/2;
+  const X={ry1:90,cx:195,ry2:300,m:405};
+  const acc=COLORS[MODE]||'#22d3ee', pur='#a78bfa';
+  ctx.font='9px DM Mono,monospace'; ctx.textAlign='center';
+
+  // col labels
+  if(n<=7){
+    ctx.fillStyle='#253347';
+    [['Encode',X.ry1],['Entangle',X.cx],['Variational',X.ry2],['Measure',X.m]]
+      .forEach(([l,x])=>ctx.fillText(l,x,10));
+  }
+
+  qubits.forEach((q,i)=>{
+    const y=sy+i*rH;
+    ctx.strokeStyle='#1c2736';ctx.lineWidth=1;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(30,y);ctx.lineTo(W-16,y);ctx.stroke();
+    ctx.fillStyle='#3d566e';ctx.textAlign='left';ctx.fillText(`q${i}`,6,y+3);ctx.textAlign='center';
+    gate(ctx,X.ry1,y,`RY(${q.x.toFixed(1)})`,acc+'28',acc,58,18);
+    if(i<n-1){
+      const y2=sy+(i+1)*rH;
+      ctx.strokeStyle=pur;ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(X.cx,y);ctx.lineTo(X.cx,y2);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle=pur;ctx.beginPath();ctx.arc(X.cx,y,4,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=pur;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(X.cx,y2,7,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(X.cx-7,y2);ctx.lineTo(X.cx+7,y2);ctx.moveTo(X.cx,y2-7);ctx.lineTo(X.cx,y2+7);ctx.stroke();
+    }
+    gate(ctx,X.ry2,y,`RY(${q.t.toFixed(1)})`,pur+'28',pur,58,18);
+    gate(ctx,X.m,y,'M','rgba(251,146,60,.15)','#fb923c',24,18);
+  });
+}
+function gate(ctx,x,y,lbl,fill,stroke,w=52,h=18){
+  ctx.fillStyle=fill;ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.setLineDash([]);
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(x-w/2,y-h/2,w,h,3);else ctx.rect(x-w/2,y-h/2,w,h);
+  ctx.fill();ctx.stroke();
+  ctx.fillStyle=stroke;ctx.font='9px DM Mono,monospace';ctx.textAlign='center';
+  ctx.fillText(lbl,x,y+3);
+}
+window.addEventListener('resize',drawCircuit);
+
+// ── run circuit ────────────────────────────────────────────────────────────
+async function runCircuit(){
+  const btn=document.getElementById('runBtn'),txt=document.getElementById('runBtnTxt');
+  btn.classList.add('loading');txt.innerHTML='EXECUTING<span class="sp"></span>';
+  try{
+    const r=await fetch(`${api()}/run`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        input_data:qubits.map(q=>q.x), thetas:qubits.map(q=>q.t),
+        backend_mode:MODE, shots:+document.getElementById('shotsR').value,
+        optimization_level:+document.getElementById('optR').value, async_mode:ASYNC,
+      }),
+    });
+    if(!r.ok){const e=await r.json();throw new Error(e.detail||`HTTP ${r.status}`);}
+    const job=await r.json();
+    onNewJob(job); toast(`Job #${job.job_id} ${job.status==='queued'?'queued on IBM':'completed'}`);
+  }catch(e){toast(e.message,1);}
+  finally{btn.classList.remove('loading');txt.textContent='▶ EXECUTE CIRCUIT';}
+}
+
+// ── quick circuits ─────────────────────────────────────────────────────────
+async function runQuick(type,n){
+  toast(`Running ${type} (${n}q)…`);
+  try{
+    const r=await fetch(`${api()}/run/circuit`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({circuit_type:type,n_qubits:n,backend_mode:MODE,
+        shots:+document.getElementById('shotsR').value,async_mode:ASYNC}),
+    });
+    if(!r.ok){const e=await r.json();throw new Error(e.detail);}
+    const job=await r.json();
+    onNewJob(job); toast(`${type} ${n}q ✓`);
+  }catch(e){toast(e.message,1);}
+}
+async function benchmarkAll(){
+  toast('Running benchmark suite…');
+  await runQuick('bell',2); await sleep(300);
+  await runQuick('ghz',3);  await sleep(300);
+  await runQuick('variational',2);
+  toast('Benchmark suite complete ✓');
+}
+
+// ── training ───────────────────────────────────────────────────────────────
+async function startTraining(){
+  const btn=document.getElementById('trainBtn'),txt=document.getElementById('trainBtnTxt');
+  btn.classList.add('loading');txt.innerHTML='TRAINING<span class="sp"></span>';
+  document.getElementById('lossWrap').style.display='block';
+
+  const maxIter=+document.getElementById('tiR').value;
+  const lr=parseFloat(document.getElementById('tlrVal').textContent);
+  const n=qubits.length;
+  const inputX=qubits.map(q=>q.x);
+  let thetas=qubits.map(q=>q.t);
+  const losses=[];
+  let bestLoss=Infinity,bestThetas=[...thetas];
+
+  for(let iter=0;iter<maxIter;iter++){
+    const loss=await apiLoss(inputX,thetas);
+    if(loss===null)break;
+    losses.push(loss);
+    if(loss<bestLoss){bestLoss=loss;bestThetas=[...thetas];}
+    drawLoss(losses);
+    // parameter shift gradients
+    const grads=[];
+    for(let i=0;i<n;i++){
+      const tp=[...thetas];tp[i]+=Math.PI/2;
+      const tm=[...thetas];tm[i]-=Math.PI/2;
+      const lp=await apiLoss(inputX,tp), lm=await apiLoss(inputX,tm);
+      grads.push((lp-lm)/2);
+    }
+    thetas=thetas.map((t,i)=>t-lr*grads[i]);
+    qubits.forEach((q,i)=>{q.t=thetas[i];});
+    renderQubits();
+    // convergence
+    if(losses.length>=5&&Math.max(...losses.slice(-5))-Math.min(...losses.slice(-5))<0.0005)break;
+    await sleep(5);
+  }
+
+  document.getElementById('trainStats').innerHTML=`
+    <span style="font-family:var(--font-m);font-size:11px;color:var(--muted2)">Best loss: <b style="color:var(--noisy)">${bestLoss.toFixed(5)}</b></span>
+    <span style="font-family:var(--font-m);font-size:11px;color:var(--muted2)">Iterations: <b style="color:var(--text)">${losses.length}</b></span>
+    <span style="font-family:var(--font-m);font-size:11px;color:var(--muted2)">Best θ: <b style="color:var(--text)">[${bestThetas.map(v=>v.toFixed(2)).join(', ')}]</b></span>`;
+  toast(`Training done — best loss: ${bestLoss.toFixed(4)}`);
+  btn.classList.remove('loading');txt.textContent='▶ START TRAINING';
+}
+
+async function apiLoss(inputX,thetas){
+  try{
+    const r=await fetch(`${api()}/run`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({input_data:inputX,thetas,backend_mode:'simulator',shots:256}),
+    });
+    const job=await r.json();
+    if(!job.result)return null;
+    const counts=job.result.counts||{};
+    const total=Object.values(counts).reduce((a,b)=>a+b,0);
+    if(!total)return null;
+    let ev=0;
+    for(const[b,c]of Object.entries(counts)){
+      ev+=c*(1-2*parseInt(b[b.length-1]));
+    }
+    return 1-(ev/total);
+  }catch{return null;}
+}
+
+function drawLoss(losses){
+  const cv=document.getElementById('lossCanvas');if(!cv)return;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=cv.offsetWidth*dpr;cv.height=cv.offsetHeight*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  const W=cv.offsetWidth,H=cv.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+  if(losses.length<2)return;
+  const maxL=Math.max(...losses),minL=Math.min(...losses),rng=maxL-minL||1;
+  const p={t:12,b:22,l:44,r:10};
+  const pw=W-p.l-p.r,ph=H-p.t-p.b;
+  // grid
+  ctx.strokeStyle='#1c2736';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(f=>{
+    const y=p.t+ph*f;
+    ctx.beginPath();ctx.moveTo(p.l,y);ctx.lineTo(W-p.r,y);ctx.stroke();
+    ctx.fillStyle='#3d566e';ctx.font='8px DM Mono';ctx.textAlign='right';
+    ctx.fillText((maxL-rng*f).toFixed(3),p.l-4,y+3);
+  });
+  // fill
+  const grd=ctx.createLinearGradient(0,p.t,0,H-p.b);
+  grd.addColorStop(0,'rgba(74,222,128,.15)');grd.addColorStop(1,'rgba(74,222,128,0)');
+  ctx.fillStyle=grd;
+  ctx.beginPath();
+  losses.forEach((l,i)=>{
+    const x=p.l+(i/(losses.length-1))*pw,y=p.t+ph*(1-(l-minL)/rng);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.lineTo(p.l+pw,H-p.b);ctx.lineTo(p.l,H-p.b);ctx.closePath();ctx.fill();
+  // line
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.setLineDash([]);
+  ctx.beginPath();
+  losses.forEach((l,i)=>{
+    const x=p.l+(i/(losses.length-1))*pw,y=p.t+ph*(1-(l-minL)/rng);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+}
+
+// ── job management ─────────────────────────────────────────────────────────
+function onNewJob(job){
+  jobs.unshift(job);
+  renderAllJobs();
+  addCard(job);
+  checkHealth();
+  if(!job.is_terminal&&(job.status==='queued'||job.status==='running'))startPoll(job.job_id);
+}
+
+function startPoll(id){
+  if(polls[id])return;
+  let n=0;
+  polls[id]=setInterval(async()=>{
+    if(++n>60){clearInterval(polls[id]);delete polls[id];return;}
+    try{
+      const r=await fetch(`${api()}/job/${id}`);
+      const job=await r.json();
+      const idx=jobs.findIndex(j=>j.job_id===id);
+      if(idx>=0)jobs[idx]=job;
+      renderAllJobs();updateCard(job);
+      if(job.status==='completed'||job.status==='failed'){
+        clearInterval(polls[id]);delete polls[id];
+        toast(`Job #${id} ${job.status==='completed'?'completed ✓':'failed'}`,job.status==='failed');
+        checkHealth();
+      }
+    }catch{}
+  },5000);
+}
+
+async function clearAllJobs(){
+  try{
+    await fetch(`${api()}/jobs`,{method:'DELETE'});
+    jobs=[];renderAllJobs();clearResults();toast('All jobs cleared');checkHealth();
+  }catch(e){toast(e.message,1);}
+}
+
+function renderAllJobs(){
+  const el=document.getElementById('allJobsList');
+  if(!jobs.length){el.innerHTML='<div class="empty"><div class="ei">📋</div>No jobs yet</div>';return;}
+  el.innerHTML=jobs.map(j=>`
+    <div class="ji ${j.status}" onclick="focusCard('${j.job_id}')">
+      <span class="jid">#${j.job_id}</span>
+      <span class="jbe">${j.backend_name}</span>
+      <span style="font-size:10px;color:var(--muted)">${j.num_qubits}q</span>
+      <span class="jsb b${j.status[0]}">${j.status.toUpperCase()}</span>
+    </div>`).join('');
+}
+
+// ── result cards ───────────────────────────────────────────────────────────
+function addCard(job){
+  const rb=document.getElementById('resultsBody');
+  rb.querySelectorAll('.empty').forEach(e=>e.remove());
+  const d=document.createElement('div');
+  d.className='rc';d.id=`rc-${job.job_id}`;
+  d.innerHTML=cardHTML(job);rb.prepend(d);
+}
+function updateCard(job){
+  const d=document.getElementById(`rc-${job.job_id}`);
+  if(d)d.innerHTML=cardHTML(job);
+}
+function focusCard(id){
+  const d=document.getElementById(`rc-${id}`);
+  if(d){d.scrollIntoView({behavior:'smooth'});d.style.borderColor='var(--sim)';setTimeout(()=>d.style.borderColor='var(--border)',2000);}
+}
+
+function cardHTML(job){
+  const counts=job.result?.counts||{};
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,14);
+  const maxC=Math.max(...sorted.map(([,v])=>v),1);
+  const total=Object.values(counts).reduce((a,b)=>a+b,0);
+  const ac=COLORS[job.backend_mode]||'#22d3ee',c2=C2[job.backend_mode]||'#7c3aed';
+
+  const hist=sorted.length?`
+    <div class="hist">
+      ${sorted.map(([s,c])=>`
+        <div class="hbw">
+          <div class="hb2" style="height:${Math.round((c/maxC)*50)+4}px;background:linear-gradient(to top,${c2},${ac})"
+            data-tip="|${s}⟩: ${c} (${(c/total*100).toFixed(1)}%)"></div>
+          <div class="hl">${s}</div>
+        </div>`).join('')}
+    </div>`
+    :(job.status==='queued'||job.status==='running'
+      ?`<div style="font-family:var(--font-m);font-size:10px;color:var(--real)">⏳ Waiting for IBM hardware…<span class="sp"></span></div>`
+      :`<div style="font-family:var(--font-m);font-size:10px;color:var(--danger)">${job.error||'No result'}</div>`);
+
+  const bclass={completed:'bc',failed:'bf',queued:'bq',running:'brun',pending:'bq'}[job.status]||'bq';
+  return `
+    <div class="rch">
+      <span class="rid">#${job.job_id}</span>
+      <span class="rbadge ${bclass}">${job.status.toUpperCase()}</span>
+    </div>
+    <div class="rmeta">
+      <span class="mp"><b>${job.backend_name}</b></span>
+      <span class="mp">${job.num_qubits}q</span>
+      <span class="mp">depth ${job.circuit_depth}</span>
+      <span class="mp">${job.shots} shots</span>
+      ${job.queue_position!=null?`<span class="mp">queue: ${job.queue_position}</span>`:''}
+    </div>
+    ${hist}`;
+}
+
+function clearResults(){
+  document.getElementById('resultsBody').innerHTML=
+    '<div class="empty"><div class="ei">◌</div>Run a circuit to see<br>measurement results here</div>';
+}
+
+// ── toast ──────────────────────────────────────────────────────────────────
+let _tt;
+function toast(msg,err=0){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show'+(err?' err':'');
+  clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ── utils ──────────────────────────────────────────────────────────────────
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// ── init ───────────────────────────────────────────────────────────────────
+renderQubits();
+drawCircuit();
+renderAllJobs();
+</script>
+</body>
+</html>
