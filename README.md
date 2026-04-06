@@ -1,6 +1,6 @@
 # Quantum ML — Hybrid Quantum-Classical Pipeline
 
-> **No IBM account needed.** `simulator` and `noisy_simulator` run entirely locally.
+> **No IBM account needed.** `simulator` and `noisy_simulator` run entirely locally and you can alos use your ibm token.
 
 ---
 
