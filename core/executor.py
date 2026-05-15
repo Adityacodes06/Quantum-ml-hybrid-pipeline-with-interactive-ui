@@ -31,8 +31,10 @@ class QuantumExecutor:
         optimization_level: int        = settings.default_optimization_level,
         preferred_device: Optional[str] = None,
         async_mode: bool               = False,
+        seed: Optional[int]            = None,
+        noise_rate: float              = 0.01,
     ) -> QuantumJob:
-        backend, backend_name = self._mgr.get(mode, preferred_device)
+        backend, backend_name = self._mgr.get(mode, preferred_device, noise_rate)
         info = circuit_info(circuit)
 
         job = QuantumJob.create(
@@ -51,7 +53,7 @@ class QuantumExecutor:
         if mode == BackendMode.REAL and async_mode:
             self._submit_async(job, backend, transpiled, shots)
         else:
-            self._run_sync(job, backend, transpiled, shots)
+            self._run_sync(job, backend, transpiled, shots, seed)
 
         return self._store.get(job.job_id)
 
@@ -91,10 +93,10 @@ class QuantumExecutor:
             logger.debug("Transpilation skipped: %s", e)
             return circuit
 
-    def _run_sync(self, job: QuantumJob, backend, circuit, shots: int) -> None:
+    def _run_sync(self, job: QuantumJob, backend, circuit, shots: int, seed: Optional[int]) -> None:
         self._store.update(job.job_id, status=JobStatus.RUNNING)
         try:
-            result = self._execute(backend, circuit, shots, job.num_qubits)
+            result = self._execute(backend, circuit, shots, job.num_qubits, seed)
             self._store.update(job.job_id, status=JobStatus.COMPLETED,
                                completed_at=_now(), result=result)
             logger.info("Job %s completed on %s", job.job_id, job.backend_name)
@@ -115,11 +117,14 @@ class QuantumExecutor:
         except Exception as exc:
             self._store.update(job.job_id, status=JobStatus.FAILED, error=str(exc))
 
-    def _execute(self, backend, circuit, shots: int, n_qubits: int) -> dict:
+    def _execute(self, backend, circuit, shots: int, n_qubits: int, seed: Optional[int]) -> dict:
         # Primary: IBM Runtime Sampler (works for both Aer and IBM backends)
         try:
-            from qiskit_ibm_runtime import Sampler
-            result = Sampler(backend).run(circuit, shots=shots).result()
+            from qiskit_ibm_runtime import Sampler, Options
+            options = Options()
+            if seed is not None:
+                options.simulator = {"seed_simulator": seed}
+            result = Sampler(backend=backend, options=options).run(circuit, shots=shots).result()
             return {"counts": self._extract_counts(result, n_qubits, shots), "shots": shots}
         except Exception as e1:
             logger.debug("Sampler path failed (%s), trying direct Aer", e1)
@@ -128,6 +133,8 @@ class QuantumExecutor:
             from qiskit_aer import AerSimulator
             from qiskit import transpile
             sim = AerSimulator()
+            if seed is not None:
+                sim.set_options(seed_simulator=seed)
             counts = sim.run(transpile(circuit, sim), shots=shots).result().get_counts()
             return {"counts": counts, "shots": shots}
         except Exception as e2:

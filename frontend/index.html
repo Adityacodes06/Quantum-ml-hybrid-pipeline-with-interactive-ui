@@ -15,6 +15,14 @@
   --gsim:rgba(34,211,238,.1);--gnoisy:rgba(74,222,128,.1);--greal:rgba(251,146,60,.1);
   --font-d:'Bebas Neue',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'DM Mono',monospace;
 }
+body.light {
+  --bg:#f8fafc;--surface:#ffffff;--surface2:#f1f5f9;--border:#e2e8f0;--border2:#cbd5e1;
+  --text:#0f172a;--muted:#64748b;--muted2:#475569;
+}
+body.light .logo-text { color: #0f172a; }
+body.light .topbar { background: rgba(248,250,252,.9); }
+body.light .mc-chk { color: transparent; }
+body.light .mc.active .mc-chk { color: #fff; }
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:14px;min-height:100vh;overflow-x:hidden}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
@@ -48,6 +56,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:
 #apiUrl{background:var(--surface);border:1px solid var(--border);border-radius:6px;
   padding:5px 10px;color:var(--muted2);font-family:var(--font-m);font-size:11px;width:195px;outline:none;transition:.2s}
 #apiUrl:focus{border-color:var(--sim);color:var(--text)}
+.theme-btn{background:none;border:none;cursor:pointer;font-size:16px;margin-right:10px}
 
 /* health bar */
 .hbar{display:flex;align-items:center;gap:20px;padding:6px 24px;border-bottom:1px solid var(--border);
@@ -206,6 +215,8 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
 .jid{font-family:var(--font-m);font-size:10px;color:var(--muted2);flex:1}
 .jbe{font-size:10px;color:var(--text)}
 .jsb{font-family:var(--font-m);font-size:9px;padding:1px 6px;border-radius:8px}
+.jdel{background:none;border:none;color:var(--danger);cursor:pointer;font-size:12px;opacity:0.5;transition:0.2s;padding:0 4px}
+.jdel:hover{opacity:1}
 
 /* empty */
 .empty{text-align:center;padding:38px 18px;color:var(--muted);font-size:12px}
@@ -269,6 +280,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
     <div class="logo-text">QUANTUM<span>ML</span></div>
   </div>
   <div class="topbar-r">
+    <button class="theme-btn" onclick="document.body.classList.toggle('light')">🌓</button>
     <div class="api-dot" id="apiDot" role="status" aria-label="API connection status"></div>
     <span id="apiStatus" aria-live="polite">Connecting…</span>
     <input id="apiUrl" value="" placeholder="API URL" aria-label="API endpoint URL"/>
@@ -317,6 +329,14 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
       <div class="ctrl"><span class="cl">Opt Level</span><span class="cv" id="optVal">1</span></div>
       <input type="range" id="optR" min="0" max="3" step="1" value="1"
         oninput="document.getElementById('optVal').textContent=this.value">
+      
+      <div class="ctrl"><span class="cl">Noise Rate</span><span class="cv" id="nsVal">1.0%</span></div>
+      <input type="range" id="nsR" min="0" max="10" step="0.5" value="1.0"
+        oninput="document.getElementById('nsVal').textContent=this.value+'%'">
+
+      <div class="ctrl"><span class="cl">Seed (opt)</span></div>
+      <input type="number" id="seedIn" placeholder="Random" style="width:100%;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:11px;padding:4px 6px;border-radius:4px;outline:none;">
+
       <div class="atrow" id="asyncRow" style="display:none">
         <button class="atog" id="aToggle" onclick="toggleAsync()"></button>
         <span class="atlbl">Async mode (submit &amp; poll)</span>
@@ -326,7 +346,14 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
     <div class="divider"></div>
 
     <div class="sb-sec" style="padding-bottom:20px">
-      <div class="sec-lbl">Qubits <span style="color:var(--muted2);font-weight:400">(x = input · θ = param)</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="sec-lbl" style="margin:0">Qubits</div>
+        <select onchange="loadPreset(this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted2);font-size:10px;border-radius:4px;outline:none;">
+          <option value="">Presets...</option>
+          <option value="iris">Iris Sample</option>
+          <option value="zeros">All Zeros</option>
+        </select>
+      </div>
       <div class="ql" id="qubitList"></div>
       <div class="qa">
         <button class="bx ba" onclick="addQubit()">+ ADD</button>
@@ -357,6 +384,9 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
         <button class="ebtn" onclick="exportQASM()" aria-label="Export circuit as QASM">📋 Export QASM</button>
         <button class="ebtn" onclick="viewCircuitASCII()" aria-label="View ASCII circuit diagram">🔤 ASCII Diagram</button>
       </div>
+      <div class="ct" style="margin-top:24px">◈ Custom QASM</div>
+      <textarea id="qasmBox" rows="4" placeholder="OPENQASM 2.0;\ninclude &#34;qelib1.inc&#34;;\n..." style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:10px;padding:8px;border-radius:6px;outline:none;resize:vertical"></textarea>
+      <button class="ebtn" onclick="runQASM()" style="margin-top:8px;width:100%">▶ Run Custom QASM</button>
     </div>
 
     <!-- QUICK -->
@@ -412,7 +442,12 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
           oninput="document.getElementById('tiVal').textContent=this.value" style="margin-bottom:14px">
         <div class="tr2"><span class="tl">Learning rate</span><span class="tv" id="tlrVal">0.010</span></div>
         <input type="range" id="tlrR" min="1" max="50" step="1" value="10"
-          oninput="document.getElementById('tlrVal').textContent=(this.value/1000).toFixed(3)" style="margin-bottom:4px">
+          oninput="document.getElementById('tlrVal').textContent=(this.value/1000).toFixed(3)" style="margin-bottom:12px">
+        <div class="tr2"><span class="tl">Optimizer</span></div>
+        <select id="optmR" style="width:100%;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:11px;padding:4px 6px;border-radius:4px;outline:none;">
+          <option value="gd">Gradient Descent (Shift Rule)</option>
+          <option value="cobyla">COBYLA (SciPy)</option>
+        </select>
         <div class="strow">
           <button class="atog" id="sToggle" onclick="toggleServerTrain()" aria-label="Toggle server-side training"></button>
           <span class="atlbl">Server-side training (faster, single request)</span>
@@ -600,6 +635,8 @@ async function runCircuit(){
         input_data:qubits.map(q=>q.x), thetas:qubits.map(q=>q.t),
         backend_mode:MODE, shots:+document.getElementById('shotsR').value,
         optimization_level:+document.getElementById('optR').value, async_mode:ASYNC,
+        seed: document.getElementById('seedIn').value ? +document.getElementById('seedIn').value : null,
+        noise_rate: (+document.getElementById('nsR').value)/100.0
       }),
     });
     if(!r.ok){const e=await r.json();throw new Error(e.detail||`HTTP ${r.status}`);}
@@ -689,6 +726,35 @@ async function viewCircuitASCII() {
   }
 }
 
+async function runQASM() {
+  const code = document.getElementById('qasmBox').value;
+  if(!code) return toast("Enter QASM code first", 1);
+  const btn=document.querySelector('#tab-run .ebtn:last-child');
+  btn.textContent='RUNNING...';
+  try{
+    const r=await fetch(`${api()}/run/qasm`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        qasm_str:code, backend_mode:MODE, shots:+document.getElementById('shotsR').value,
+        optimization_level:+document.getElementById('optR').value,
+        seed: document.getElementById('seedIn').value ? +document.getElementById('seedIn').value : null,
+        noise_rate: (+document.getElementById('nsR').value)/100.0
+      }),
+    });
+    if(!r.ok){const e=await r.json();throw new Error(e.detail||`HTTP ${r.status}`);}
+    const job=await r.json();
+    onNewJob(job); toast(`Custom QASM submitted!`);
+  }catch(e){toast(e.message,1);}
+  finally{btn.textContent='▶ Run Custom QASM';}
+}
+
+function loadPreset(val) {
+  if(!val) return;
+  if(val==='iris') qubits = [{x:5.1,t:0.1},{x:3.5,t:0.1},{x:1.4,t:0.1},{x:0.2,t:0.1}];
+  if(val==='zeros') qubits.forEach(q=>q.x=0);
+  renderQubits();
+}
+
 // ── training ───────────────────────────────────────────────────────────────
 async function startTraining(){
   const btn=document.getElementById('trainBtn'),txt=document.getElementById('trainBtnTxt');
@@ -712,7 +778,9 @@ async function startTraining(){
           thetas: thetas,
           learning_rate: lr,
           max_iterations: maxIter,
-          shots: 256
+          shots: 256,
+          optimizer: document.getElementById('optmR').value,
+          seed: document.getElementById('seedIn').value ? +document.getElementById('seedIn').value : null,
         })
       });
       if(!res.ok) throw new Error("Server training failed");
@@ -867,12 +935,26 @@ function renderAllJobs(){
   const el=document.getElementById('allJobsList');
   if(!jobs.length){el.innerHTML='<div class="empty"><div class="ei">📋</div>No jobs yet</div>';return;}
   el.innerHTML=jobs.map(j=>`
-    <div class="ji ${j.status}" onclick="focusCard('${j.job_id}')">
-      <span class="jid">#${j.job_id}</span>
-      <span class="jbe">${j.backend_name}</span>
-      <span style="font-size:10px;color:var(--muted)">${j.num_qubits}q</span>
-      <span class="jsb b${j.status[0]}">${j.status.toUpperCase()}</span>
+    <div class="ji ${j.status}">
+      <div onclick="focusCard('${j.job_id}')" style="display:flex;align-items:center;flex:1;gap:8px">
+        <span class="jid">#${j.job_id}</span>
+        <span class="jbe">${j.backend_name}</span>
+        <span style="font-size:10px;color:var(--muted)">${j.num_qubits}q</span>
+        <span class="jsb b${j.status[0]}">${j.status.toUpperCase()}</span>
+      </div>
+      <button class="jdel" onclick="deleteJob('${j.job_id}')" title="Delete job">×</button>
     </div>`).join('');
+}
+
+async function deleteJob(id){
+  try{
+    await fetch(`${api()}/job/${id}`,{method:'DELETE'});
+    jobs = jobs.filter(j=>j.job_id!==id);
+    renderAllJobs();
+    const c = document.getElementById(`rc-${id}`);
+    if(c) c.remove();
+    toast(`Job ${id} deleted`);
+  }catch(e){toast('Failed to delete',1);}
 }
 
 // ── result cards ───────────────────────────────────────────────────────────
@@ -924,8 +1006,17 @@ function cardHTML(job){
       <span class="mp">depth ${job.circuit_depth}</span>
       <span class="mp">${job.shots} shots</span>
       ${job.queue_position!=null?`<span class="mp">queue: ${job.queue_position}</span>`:''}
+      <button onclick='downloadJSON(${JSON.stringify(job)})' style="background:none;border:none;color:var(--sim);cursor:pointer;font-family:var(--font-m);font-size:9px;text-decoration:underline">export.json</button>
     </div>
     ${hist}`;
+}
+
+function downloadJSON(obj){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const url=window.URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`job_${obj.job_id}.json`;
+  a.click();window.URL.revokeObjectURL(url);
 }
 
 function clearResults(){

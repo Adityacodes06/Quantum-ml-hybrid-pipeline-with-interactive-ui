@@ -26,6 +26,8 @@ class TrainingConfig:
     convergence_threshold: float = 1e-4
     checkpoint_dir: str        = settings.checkpoint_dir
     save_every: int            = 10
+    optimizer: str             = "gd"
+    seed: Optional[int]        = None
 
 
 @dataclass
@@ -69,7 +71,10 @@ class VariationalTrainer:
         thetas  = initial_thetas or [random.uniform(0, 2*math.pi) for _ in range(n)]
         history = TrainingHistory(best_thetas=thetas[:])
         start   = time.time()
-        logger.info("Training: %dq, max %d iters, lr=%.4f", n, cfg.max_iterations, cfg.learning_rate)
+        logger.info("Training: %dq, max %d iters, lr=%.4f, opt=%s", n, cfg.max_iterations, cfg.learning_rate, cfg.optimizer)
+
+        if cfg.optimizer == "cobyla":
+            return self._train_cobyla(input_data, thetas, history, start)
 
         for i in range(cfg.max_iterations):
             loss = self._loss(input_data, thetas)
@@ -96,6 +101,26 @@ class VariationalTrainer:
         logger.info("Training done: %d iters, best loss=%.6f, %.1fs", history.iterations_run, history.best_loss, history.elapsed_seconds)
         return history
 
+    def _train_cobyla(self, input_data: List[float], thetas: List[float], history: TrainingHistory, start: float) -> TrainingHistory:
+        from scipy.optimize import minimize
+        cfg = self.cfg
+        
+        def obj(t):
+            t_list = t.tolist()
+            loss = self._loss(input_data, t_list)
+            history.losses.append(loss)
+            if loss < history.best_loss:
+                history.best_loss = loss
+                history.best_thetas = t_list[:]
+            return loss
+
+        res = minimize(obj, thetas, method="COBYLA", options={"maxiter": cfg.max_iterations, "tol": cfg.convergence_threshold})
+        history.iterations_run = len(history.losses)
+        history.elapsed_seconds = round(time.time() - start, 2)
+        history.converged = res.success
+        self._checkpoint(history.best_thetas, history.best_loss, "final")
+        return history
+
     def _gradients(self, input_data, thetas):
         shift = math.pi / 2
         grads = []
@@ -109,6 +134,7 @@ class VariationalTrainer:
         job = self._ex.run(
             build_variational_bottleneck(self.cfg.n_qubits, input_data, thetas),
             mode=BackendMode.SIMULATOR, shots=self.cfg.shots,
+            seed=self.cfg.seed,
         )
         if not job.result:
             return float("inf")

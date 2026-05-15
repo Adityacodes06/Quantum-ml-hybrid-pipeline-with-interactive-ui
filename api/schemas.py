@@ -17,6 +17,8 @@ class RunCircuitRequest(BaseModel):
     optimization_level: int = Field(settings.default_optimization_level, ge=0, le=3)
     preferred_device: Optional[str] = None
     async_mode: bool = False
+    seed: Optional[int] = Field(None, description="Random seed for simulator reproducibility")
+    noise_rate: float = Field(0.01, ge=0.0, le=1.0, description="Depolarizing error rate for noisy_simulator")
 
     @field_validator("thetas")
     @classmethod
@@ -46,6 +48,8 @@ class TrainRequest(BaseModel):
     max_iterations: int = Field(50, ge=1, le=settings.max_training_iterations)
     shots: int = Field(256, ge=1, le=settings.max_shots)
     convergence_threshold: float = Field(1e-4, gt=0)
+    seed: Optional[int] = Field(None, description="Random seed for simulator reproducibility")
+    optimizer: Literal["gd", "cobyla"] = Field("gd", description="Optimizer algorithm to use")
 
     @field_validator("thetas")
     @classmethod
@@ -55,6 +59,16 @@ class TrainRequest(BaseModel):
             if inp and len(v) != len(inp):
                 raise ValueError(f"thetas length ({len(v)}) must equal input_data length ({len(inp)})")
         return v
+
+
+class QasmRunRequest(BaseModel):
+    """Request model for running raw OpenQASM."""
+    qasm_str: str = Field(..., description="OpenQASM 2.0 string")
+    backend_mode: Literal["simulator","noisy_simulator","real"] = "simulator"
+    shots: int = Field(settings.default_shots, ge=1, le=settings.max_shots)
+    optimization_level: int = Field(settings.default_optimization_level, ge=0, le=3)
+    seed: Optional[int] = None
+    noise_rate: float = 0.01
 
 
 class TrainResponse(BaseModel):

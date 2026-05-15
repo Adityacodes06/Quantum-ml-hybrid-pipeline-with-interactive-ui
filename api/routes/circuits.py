@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 from api.dependencies import get_executor
-from api.schemas import CircuitTypeRequest, JobResponse, RunCircuitRequest, TrainRequest, TrainResponse
+from api.schemas import CircuitTypeRequest, JobResponse, RunCircuitRequest, TrainRequest, TrainResponse, QasmRunRequest
 from core.circuit_factory import (
     build_bell_state, build_ghz_state, build_variational_bottleneck,
     build_amplitude_encoding,
@@ -30,6 +30,7 @@ async def run_variational(req: RunCircuitRequest, executor: QuantumExecutor = De
             circuit=circuit, mode=BackendMode(req.backend_mode),
             shots=req.shots, optimization_level=req.optimization_level,
             preferred_device=req.preferred_device, async_mode=req.async_mode,
+            seed=req.seed, noise_rate=req.noise_rate,
         )
     except RuntimeError as e:
         raise HTTPException(500, str(e))
@@ -74,6 +75,11 @@ async def run_training(req: TrainRequest, executor: QuantumExecutor = Depends(ge
         shots=req.shots,
         convergence_threshold=req.convergence_threshold,
     )
+    # The Trainer doesn't currently take optimizer config natively in the BaseModel
+    # We will pass it directly to trainer or update TrainingConfig
+    setattr(config, "optimizer", req.optimizer)
+    setattr(config, "seed", req.seed)
+    
     trainer = VariationalTrainer(config=config, executor=executor)
     try:
         history = await run_in_threadpool(trainer.train, req.input_data, req.thetas)
@@ -136,3 +142,22 @@ async def export_qasm(
         )
     except Exception as e:
         raise HTTPException(500, f"QASM generation failed: {e}")
+
+
+@router.post("/qasm", response_model=JobResponse, summary="Execute raw OpenQASM 2.0")
+async def run_qasm_route(req: QasmRunRequest, executor: QuantumExecutor = Depends(get_executor)):
+    from qiskit import QuantumCircuit
+    try:
+        circuit = QuantumCircuit.from_qasm_str(req.qasm_str)
+    except Exception as e:
+        raise HTTPException(400, f"Invalid QASM string: {e}")
+    try:
+        job = await run_in_threadpool(
+            executor.run,
+            circuit=circuit, mode=BackendMode(req.backend_mode),
+            shots=req.shots, optimization_level=req.optimization_level,
+            seed=req.seed, noise_rate=req.noise_rate,
+        )
+    except RuntimeError as e:
+        raise HTTPException(500, str(e))
+    return JobResponse(**job.to_dict())

@@ -36,11 +36,11 @@ class BackendManager:
         self._ibm_instance = ibm_instance
         self._service     = None
 
-    def get(self, mode: BackendMode, preferred_device: Optional[str] = None) -> Tuple[object, str]:
+    def get(self, mode: BackendMode, preferred_device: Optional[str] = None, noise_rate: float = 0.01) -> Tuple[object, str]:
         if mode == BackendMode.SIMULATOR:
             return self._aer_clean()
         if mode == BackendMode.NOISY_SIMULATOR:
-            return self._aer_noisy()
+            return self._aer_noisy(noise_rate)
         if mode == BackendMode.REAL:
             return self._ibm_real(preferred_device)
         raise ValueError(f"Unknown BackendMode: {mode!r}")
@@ -80,7 +80,7 @@ class BackendManager:
             raise RuntimeError("qiskit-aer not installed. Run: pip install qiskit-aer")
         return AerSimulator(), "aer_simulator"
 
-    def _aer_noisy(self) -> Tuple[object, str]:
+    def _aer_noisy(self, noise_rate: float = 0.01) -> Tuple[object, str]:
         """
         Local noise model — no IBM token required.
         Depolarising + T1/T2 thermal relaxation + readout errors
@@ -95,14 +95,14 @@ class BackendManager:
 
             nm = NoiseModel()
 
-            # Single-qubit gate depolarising ~0.1%
-            e1 = depolarizing_error(0.001, 1)
+            # Single-qubit gate depolarising (10% of total rate)
+            e1 = depolarizing_error(noise_rate * 0.1, 1)
             nm.add_all_qubit_quantum_error(
                 e1, ["u1","u2","u3","ry","rx","rz","h","x","y","z","s","t"]
             )
 
-            # Two-qubit gate depolarising ~1%
-            e2 = depolarizing_error(0.01, 2)
+            # Two-qubit gate depolarising (full rate)
+            e2 = depolarizing_error(noise_rate, 2)
             nm.add_all_qubit_quantum_error(e2, ["cx","cz","swap"])
 
             # T1=50µs, T2=70µs thermal relaxation
