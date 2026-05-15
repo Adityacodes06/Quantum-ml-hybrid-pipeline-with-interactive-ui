@@ -8,11 +8,15 @@ START THE SERVER WITH:
 from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from api.routes import circuits, devices, jobs
 from config.settings import settings
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -66,9 +70,22 @@ def create_app() -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     async def root():
+        """Serve frontend if available, otherwise return API info."""
+        index = FRONTEND_DIR / "index.html"
+        if index.exists():
+            return FileResponse(index)
         return {"message": "Quantum ML API", "version": "1.0.0", "docs": "/docs", "health": "/health"}
 
+    @app.get("/ui", include_in_schema=False)
+    async def ui():
+        """Explicit UI route."""
+        index = FRONTEND_DIR / "index.html"
+        if index.exists():
+            return FileResponse(index)
+        return JSONResponse(status_code=404, content={"detail": "Frontend not found"})
+
     return app
+
 
 
 app = create_app()

@@ -238,7 +238,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
   <div class="topbar-r">
     <div class="api-dot" id="apiDot"></div>
     <span id="apiStatus">Connecting…</span>
-    <input id="apiUrl" value="http://localhost:8000" placeholder="API URL"/>
+    <input id="apiUrl" value="" placeholder="API URL"/>
   </div>
 </nav>
 
@@ -807,6 +807,18 @@ function toast(msg,err=0){
 
 // ── utils ──────────────────────────────────────────────────────────────────
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// ── auto-detect API URL ────────────────────────────────────────────────────
+(function() {
+  const loc = window.location;
+  let defaultUrl;
+  if (loc.protocol === 'file:' || loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
+    defaultUrl = 'http://localhost:8000';
+  } else {
+    defaultUrl = loc.origin;  // same origin on Render/production
+  }
+  document.getElementById('apiUrl').value = defaultUrl;
+})();
 
 // ── init ───────────────────────────────────────────────────────────────────
 renderQubits();

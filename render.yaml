@@ -1,0 +1,20 @@
+# render.yaml — Infrastructure as Code for Render.com
+# Connects to your GitHub repo and auto-deploys on push.
+
+services:
+  - type: web
+    name: quantum-ml-api
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: CORS_ORIGINS
+        value: '["*"]'
+      # Optional: Add your IBM Quantum token for real hardware access
+      # - key: IBM_QUANTUM_TOKEN
+      #   sync: false  # prompts for value in dashboard
