@@ -827,7 +827,10 @@ async function exportQASM() {
         thetas: qubits.map(q => q.t),
         backend_mode: MODE,
         shots: 1024,
-        optimization_level: 1
+        optimization_level: 1,
+        encode_gate: document.getElementById('encGate').value,
+        entangle_type: document.getElementById('entType').value,
+        var_gate: document.getElementById('varGate').value
       })
     });
     

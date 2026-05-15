@@ -164,7 +164,10 @@ async def export_qasm(
     the provided input_data and thetas.
     """
     try:
-        circuit = build_variational_bottleneck(len(req.input_data), req.input_data, req.thetas)
+        circuit = build_variational_bottleneck(
+            len(req.input_data), req.input_data, req.thetas,
+            encode_gate=req.encode_gate, entangle_type=req.entangle_type, var_gate=req.var_gate
+        )
         qasm_str = circuit.qasm()
         return PlainTextResponse(
             content=qasm_str,
