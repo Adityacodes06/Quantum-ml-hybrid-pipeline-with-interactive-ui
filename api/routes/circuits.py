@@ -21,7 +21,10 @@ router = APIRouter(prefix="/run", tags=["circuits"])
 @router.post("", response_model=JobResponse, summary="Run variational bottleneck circuit")
 async def run_variational(req: RunCircuitRequest, executor: QuantumExecutor = Depends(get_executor)):
     try:
-        circuit = build_variational_bottleneck(len(req.input_data), req.input_data, req.thetas)
+        circuit = build_variational_bottleneck(
+            len(req.input_data), req.input_data, req.thetas,
+            encode_gate=req.encode_gate, entangle_type=req.entangle_type, var_gate=req.var_gate
+        )
     except ValueError as e:
         raise HTTPException(422, str(e))
     try:
@@ -79,6 +82,9 @@ async def run_training(req: TrainRequest, executor: QuantumExecutor = Depends(ge
     # We will pass it directly to trainer or update TrainingConfig
     setattr(config, "optimizer", req.optimizer)
     setattr(config, "seed", req.seed)
+    setattr(config, "encode_gate", req.encode_gate)
+    setattr(config, "entangle_type", req.entangle_type)
+    setattr(config, "var_gate", req.var_gate)
     
     trainer = VariationalTrainer(config=config, executor=executor)
     try:

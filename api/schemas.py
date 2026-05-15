@@ -19,6 +19,9 @@ class RunCircuitRequest(BaseModel):
     async_mode: bool = False
     seed: Optional[int] = Field(None, description="Random seed for simulator reproducibility")
     noise_rate: float = Field(0.01, ge=0.0, le=1.0, description="Depolarizing error rate for noisy_simulator")
+    encode_gate: Literal["rx", "ry", "rz"] = "ry"
+    entangle_type: Literal["linear", "circular", "full", "none"] = "linear"
+    var_gate: Literal["rx", "ry", "rz"] = "ry"
 
     @field_validator("thetas")
     @classmethod
@@ -50,6 +53,9 @@ class TrainRequest(BaseModel):
     convergence_threshold: float = Field(1e-4, gt=0)
     seed: Optional[int] = Field(None, description="Random seed for simulator reproducibility")
     optimizer: Literal["gd", "cobyla"] = Field("gd", description="Optimizer algorithm to use")
+    encode_gate: Literal["rx", "ry", "rz"] = "ry"
+    entangle_type: Literal["linear", "circular", "full", "none"] = "linear"
+    var_gate: Literal["rx", "ry", "rz"] = "ry"
 
     @field_validator("thetas")
     @classmethod

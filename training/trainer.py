@@ -28,6 +28,9 @@ class TrainingConfig:
     save_every: int            = 10
     optimizer: str             = "gd"
     seed: Optional[int]        = None
+    encode_gate: str           = "ry"
+    entangle_type: str         = "linear"
+    var_gate: str              = "ry"
 
 
 @dataclass
@@ -132,7 +135,12 @@ class VariationalTrainer:
 
     def _loss(self, input_data, thetas) -> float:
         job = self._ex.run(
-            build_variational_bottleneck(self.cfg.n_qubits, input_data, thetas),
+            build_variational_bottleneck(
+                self.cfg.n_qubits, input_data, thetas,
+                encode_gate=self.cfg.encode_gate,
+                entangle_type=self.cfg.entangle_type,
+                var_gate=self.cfg.var_gate
+            ),
             mode=BackendMode.SIMULATOR, shots=self.cfg.shots,
             seed=self.cfg.seed,
         )

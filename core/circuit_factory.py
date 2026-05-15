@@ -13,6 +13,9 @@ def build_variational_bottleneck(
     n_qubits: int,
     input_data: List[float],
     thetas: List[float],
+    encode_gate: str = "ry",
+    entangle_type: str = "linear",
+    var_gate: str = "ry"
 ) -> QuantumCircuit:
     """
     Encode → Entangle (CX chain) → Variational → Measure.
@@ -25,13 +28,23 @@ def build_variational_bottleneck(
 
     qc = QuantumCircuit(n_qubits, name="variational_bottleneck")
     for i, x in enumerate(input_data):
-        qc.ry(float(x), i)
+        getattr(qc, encode_gate)(float(x), i)
     qc.barrier(label="encode")
-    for i in range(n_qubits - 1):
-        qc.cx(i, i + 1)
+    
+    if entangle_type == "linear":
+        for i in range(n_qubits - 1):
+            qc.cx(i, i + 1)
+    elif entangle_type == "circular":
+        for i in range(n_qubits):
+            qc.cx(i, (i + 1) % n_qubits)
+    elif entangle_type == "full":
+        for i in range(n_qubits):
+            for j in range(i + 1, n_qubits):
+                qc.cx(i, j)
+                
     qc.barrier(label="entangle")
     for i, t in enumerate(thetas):
-        qc.ry(float(t), i)
+        getattr(qc, var_gate)(float(t), i)
     qc.barrier(label="variational")
     qc.measure_all()
     return qc

@@ -337,6 +337,27 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
       <div class="ctrl"><span class="cl">Seed (opt)</span></div>
       <input type="number" id="seedIn" placeholder="Random" style="width:100%;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:11px;padding:4px 6px;border-radius:4px;outline:none;">
 
+      <div class="sec-lbl" style="margin-top:16px;margin-bottom:10px">Ansatz Architecture</div>
+      <div class="ctrl"><span class="cl">Encode Gate</span></div>
+      <select id="encGate" style="width:100%;margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:11px;padding:4px 6px;border-radius:4px;outline:none;" onchange="drawCircuit()">
+        <option value="ry">RY (Y-Rotation)</option>
+        <option value="rx">RX (X-Rotation)</option>
+        <option value="rz">RZ (Z-Rotation)</option>
+      </select>
+      <div class="ctrl"><span class="cl">Entangle</span></div>
+      <select id="entType" style="width:100%;margin-bottom:8px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:11px;padding:4px 6px;border-radius:4px;outline:none;" onchange="drawCircuit()">
+        <option value="linear">Linear (Nearest Neighbor)</option>
+        <option value="circular">Circular (Ring)</option>
+        <option value="full">Full (All-to-All)</option>
+        <option value="none">None (No CX gates)</option>
+      </select>
+      <div class="ctrl"><span class="cl">Variational Gate</span></div>
+      <select id="varGate" style="width:100%;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:11px;padding:4px 6px;border-radius:4px;outline:none;" onchange="drawCircuit()">
+        <option value="ry">RY (Y-Rotation)</option>
+        <option value="rx">RX (X-Rotation)</option>
+        <option value="rz">RZ (Z-Rotation)</option>
+      </select>
+
       <div class="atrow" id="asyncRow" style="display:none">
         <button class="atog" id="aToggle" onclick="toggleAsync()"></button>
         <span class="atlbl">Async mode (submit &amp; poll)</span>
@@ -599,18 +620,34 @@ function drawCircuit(){
     ctx.strokeStyle='#1c2736';ctx.lineWidth=1;ctx.setLineDash([]);
     ctx.beginPath();ctx.moveTo(30,y);ctx.lineTo(W-16,y);ctx.stroke();
     ctx.fillStyle='#3d566e';ctx.textAlign='left';ctx.fillText(`q${i}`,6,y+3);ctx.textAlign='center';
-    gate(ctx,X.ry1,y,`RY(${q.x.toFixed(1)})`,acc+'28',acc,58,18);
-    if(i<n-1){
-      const y2=sy+(i+1)*rH;
-      ctx.strokeStyle=pur;ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
-      ctx.beginPath();ctx.moveTo(X.cx,y);ctx.lineTo(X.cx,y2);ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle=pur;ctx.beginPath();ctx.arc(X.cx,y,4,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=pur;ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.arc(X.cx,y2,7,0,Math.PI*2);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(X.cx-7,y2);ctx.lineTo(X.cx+7,y2);ctx.moveTo(X.cx,y2-7);ctx.lineTo(X.cx,y2+7);ctx.stroke();
+    
+    const encG = document.getElementById('encGate').value.toUpperCase();
+    const varG = document.getElementById('varGate').value.toUpperCase();
+    const entT = document.getElementById('entType').value;
+    
+    gate(ctx,X.ry1,y,`${encG}(${q.x.toFixed(1)})`,acc+'28',acc,58,18);
+    
+    if(entT !== 'none') {
+      let targets = [];
+      if(entT === 'linear' && i < n-1) targets.push(i+1);
+      if(entT === 'circular') targets.push((i+1)%n);
+      if(entT === 'full') {
+        for(let j=i+1; j<n; j++) targets.push(j);
+      }
+      
+      targets.forEach((tgt) => {
+        const y2 = sy + tgt * rH;
+        ctx.strokeStyle=pur;ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+        ctx.beginPath();ctx.moveTo(X.cx,y);ctx.lineTo(X.cx,y2);ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle=pur;ctx.beginPath();ctx.arc(X.cx,y,4,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle=pur;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(X.cx,y2,7,0,Math.PI*2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(X.cx-7,y2);ctx.lineTo(X.cx+7,y2);ctx.moveTo(X.cx,y2-7);ctx.lineTo(X.cx,y2+7);ctx.stroke();
+      });
     }
-    gate(ctx,X.ry2,y,`RY(${q.t.toFixed(1)})`,pur+'28',pur,58,18);
+    
+    gate(ctx,X.ry2,y,`${varG}(${q.t.toFixed(1)})`,pur+'28',pur,58,18);
     gate(ctx,X.m,y,'M','rgba(251,146,60,.15)','#fb923c',24,18);
   });
 }
@@ -636,7 +673,10 @@ async function runCircuit(){
         backend_mode:MODE, shots:+document.getElementById('shotsR').value,
         optimization_level:+document.getElementById('optR').value, async_mode:ASYNC,
         seed: document.getElementById('seedIn').value ? +document.getElementById('seedIn').value : null,
-        noise_rate: (+document.getElementById('nsR').value)/100.0
+        noise_rate: (+document.getElementById('nsR').value)/100.0,
+        encode_gate: document.getElementById('encGate').value,
+        entangle_type: document.getElementById('entType').value,
+        var_gate: document.getElementById('varGate').value
       }),
     });
     if(!r.ok){const e=await r.json();throw new Error(e.detail||`HTTP ${r.status}`);}
@@ -781,6 +821,9 @@ async function startTraining(){
           shots: 256,
           optimizer: document.getElementById('optmR').value,
           seed: document.getElementById('seedIn').value ? +document.getElementById('seedIn').value : null,
+          encode_gate: document.getElementById('encGate').value,
+          entangle_type: document.getElementById('entType').value,
+          var_gate: document.getElementById('varGate').value
         })
       });
       if(!res.ok) throw new Error("Server training failed");
@@ -841,7 +884,12 @@ async function apiLoss(inputX,thetas){
   try{
     const r=await fetch(`${api()}/run`,{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({input_data:inputX,thetas,backend_mode:'simulator',shots:256}),
+      body:JSON.stringify({
+        input_data:inputX,thetas,backend_mode:'simulator',shots:256,
+        encode_gate: document.getElementById('encGate').value,
+        entangle_type: document.getElementById('entType').value,
+        var_gate: document.getElementById('varGate').value
+      }),
     });
     const job=await r.json();
     if(!job.result)return null;
