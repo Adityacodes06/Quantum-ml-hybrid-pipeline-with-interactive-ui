@@ -638,7 +638,37 @@ function toggleServerTrain() {
 }
 
 async function exportQASM() {
-  toast("QASM export coming soon!", 0);
+  toast("Generating QASM...", 0);
+  try {
+    const res = await fetch(`${api()}/run/circuit/qasm`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        input_data: qubits.map(q => q.x),
+        thetas: qubits.map(q => q.t),
+        backend_mode: MODE,
+        shots: 1024,
+        optimization_level: 1
+      })
+    });
+    
+    if(!res.ok) throw new Error("QASM export failed");
+    
+    // Download logic
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `circuit_${qubits.length}q.qasm`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    toast("QASM file downloaded! ✓");
+  } catch(e) {
+    toast(e.message, 1);
+  }
 }
 
 async function viewCircuitASCII() {

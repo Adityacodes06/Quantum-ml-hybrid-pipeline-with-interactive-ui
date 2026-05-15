@@ -116,3 +116,23 @@ async def draw_circuit(
         diagram = str(qc)
 
     return PlainTextResponse(content=diagram, media_type="text/plain")
+
+
+@router.post("/circuit/qasm", summary="Get OpenQASM 2.0 representation")
+async def export_qasm(
+    req: RunCircuitRequest,
+):
+    """
+    Returns the OpenQASM string for the variational circuit defined by
+    the provided input_data and thetas.
+    """
+    try:
+        circuit = build_variational_bottleneck(len(req.input_data), req.input_data, req.thetas)
+        qasm_str = circuit.qasm()
+        return PlainTextResponse(
+            content=qasm_str,
+            media_type="text/plain",
+            headers={"Content-Disposition": 'attachment; filename="variational_circuit.qasm"'}
+        )
+    except Exception as e:
+        raise HTTPException(500, f"QASM generation failed: {e}")
