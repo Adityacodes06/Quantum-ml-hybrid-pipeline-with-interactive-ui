@@ -11,9 +11,7 @@ from typing import List, Optional
 
 from config.settings import settings
 from core.circuit_factory import build_variational_bottleneck
-from core.executor import QuantumExecutor
-from core.job_store import JobStore
-from core.quantum_backend import BackendManager, BackendMode
+from core.quantum_backend import BackendMode
 from training.loss import expectation_value
 
 logger = logging.getLogger(__name__)
@@ -43,12 +41,24 @@ class TrainingHistory:
 
 
 class VariationalTrainer:
+    """
+    Variational parameter optimiser using the parameter shift rule.
+    Accepts an optional executor for dependency injection (shares the
+    main app's BackendManager and JobStore).
+    """
 
-    def __init__(self, config: Optional[TrainingConfig] = None):
+    def __init__(self, config: Optional[TrainingConfig] = None, executor=None):
         self.cfg = config or TrainingConfig()
-        mgr      = BackendManager()
-        store    = JobStore()
-        self._ex = QuantumExecutor(mgr, store)
+        if executor is not None:
+            self._ex = executor
+        else:
+            # Fallback: create isolated executor (backward compatibility)
+            from core.executor import QuantumExecutor
+            from core.job_store import JobStore
+            from core.quantum_backend import BackendManager
+            mgr   = BackendManager()
+            store  = JobStore()
+            self._ex = QuantumExecutor(mgr, store)
 
     def train(self, input_data: List[float], initial_thetas: Optional[List[float]] = None) -> TrainingHistory:
         cfg = self.cfg

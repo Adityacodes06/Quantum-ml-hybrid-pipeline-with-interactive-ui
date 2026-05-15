@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Quantum ML API starting on port %d", settings.api_port)
     logger.info("IBM token: %s", "configured" if settings.ibm_quantum_token else "not set (simulator modes only)")
+    logger.info("Rate limit: %s", settings.rate_limit)
     yield
     logger.info("Quantum ML API shutting down")
 
@@ -42,7 +43,7 @@ def create_app() -> FastAPI:
             "**Modes:** `simulator` · `noisy_simulator` · `real` (IBM token required)\n\n"
             "No IBM account needed for the first two modes."
         ),
-        version="1.0.0",
+        version="1.1.0",
         docs_url="/docs",
         redoc_url="/redoc",
         lifespan=lifespan,
@@ -55,6 +56,19 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # ── Rate limiting ──────────────────────────────────────────────────────
+    try:
+        from slowapi import Limiter, _rate_limit_exceeded_handler
+        from slowapi.util import get_remote_address
+        from slowapi.errors import RateLimitExceeded
+
+        limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit])
+        app.state.limiter = limiter
+        app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+        logger.info("Rate limiting enabled: %s", settings.rate_limit)
+    except ImportError:
+        logger.warning("slowapi not installed — rate limiting disabled. Run: pip install slowapi")
 
     @app.exception_handler(Exception)
     async def global_error(request: Request, exc: Exception):
@@ -74,7 +88,7 @@ def create_app() -> FastAPI:
         index = FRONTEND_DIR / "index.html"
         if index.exists():
             return FileResponse(index)
-        return {"message": "Quantum ML API", "version": "1.0.0", "docs": "/docs", "health": "/health"}
+        return {"message": "Quantum ML API", "version": "1.1.0", "docs": "/docs", "health": "/health"}
 
     @app.get("/ui", include_in_schema=False)
     async def ui():
@@ -85,7 +99,6 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=404, content={"detail": "Frontend not found"})
 
     return app
-
 
 
 app = create_app()

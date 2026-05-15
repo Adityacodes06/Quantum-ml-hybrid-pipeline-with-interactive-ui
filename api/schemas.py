@@ -36,6 +36,37 @@ class CircuitTypeRequest(BaseModel):
     preferred_device: Optional[str] = None
 
 
+class TrainRequest(BaseModel):
+    """Request model for server-side variational training."""
+    input_data: List[float] = Field(..., min_length=1, max_length=settings.max_qubits,
+        description="Classical input features, one per qubit")
+    thetas: Optional[List[float]] = Field(None,
+        description="Initial theta parameters. Random if omitted.")
+    learning_rate: float = Field(settings.learning_rate, gt=0, le=1.0)
+    max_iterations: int = Field(50, ge=1, le=settings.max_training_iterations)
+    shots: int = Field(256, ge=1, le=settings.max_shots)
+    convergence_threshold: float = Field(1e-4, gt=0)
+
+    @field_validator("thetas")
+    @classmethod
+    def thetas_match_input(cls, v, info):
+        if v is not None:
+            inp = info.data.get("input_data", [])
+            if inp and len(v) != len(inp):
+                raise ValueError(f"thetas length ({len(v)}) must equal input_data length ({len(inp)})")
+        return v
+
+
+class TrainResponse(BaseModel):
+    """Response model for training results."""
+    losses: List[float]
+    best_loss: float
+    best_thetas: List[float]
+    iterations_run: int
+    converged: bool
+    elapsed_seconds: float
+
+
 class JobResponse(BaseModel):
     job_id: str
     backend_mode: str

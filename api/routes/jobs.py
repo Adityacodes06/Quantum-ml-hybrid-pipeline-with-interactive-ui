@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
 from api.dependencies import get_executor, get_job_store
 from api.schemas import JobResponse
 from core.executor import QuantumExecutor
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/job", tags=["jobs"])
 @router.get("/{job_id}", response_model=JobResponse, summary="Get job status and result")
 async def get_job(job_id: str, executor: QuantumExecutor = Depends(get_executor)):
     """Fetch job. For async IBM jobs, triggers a live status poll."""
-    job = executor.fetch_result(job_id)
+    job = await run_in_threadpool(executor.fetch_result, job_id)
     if job is None:
         raise HTTPException(404, f"Job '{job_id}' not found")
     return JobResponse(**job.to_dict())

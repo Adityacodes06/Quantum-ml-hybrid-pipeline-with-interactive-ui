@@ -10,14 +10,24 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from fastapi import HTTPException, status
 import os
+import secrets
 
-# Configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+# Configuration — fail fast if SECRET_KEY is not set in production
+_default_key = secrets.token_urlsafe(64)
+SECRET_KEY = os.getenv("SECRET_KEY", _default_key)
+
+if SECRET_KEY == _default_key and os.getenv("RENDER", ""):
+    raise RuntimeError(
+        "SECRET_KEY environment variable is not set. "
+        "Set it in your Render dashboard under Environment → Add Variable."
+    )
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 
 class Token(BaseModel):
     access_token: str

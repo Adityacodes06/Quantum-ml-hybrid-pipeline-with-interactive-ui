@@ -48,7 +48,7 @@ class QuantumJob:
     @classmethod
     def create(cls, **kwargs) -> "QuantumJob":
         return cls(
-            job_id=uuid.uuid4().hex[:8],
+            job_id=uuid.uuid4().hex[:12],  # 12 hex chars = 6 bytes, collision-safe
             status=JobStatus.PENDING,
             created_at=datetime.now(timezone.utc).isoformat(),
             **kwargs,
@@ -137,11 +137,17 @@ class JobStore:
             self._redis = redis.from_url(url, decode_responses=True)
             self._redis.ping()
             logger.info("Job store connected to Redis")
-            for key in self._redis.keys("qjob:*"):
-                raw = self._redis.get(key)
-                if raw:
-                    d = json.loads(raw)
-                    self._jobs[d["job_id"]] = QuantumJob(**{**d,"status":JobStatus(d["status"])})
+            # Use SCAN instead of KEYS to avoid blocking Redis in production
+            cursor = 0
+            while True:
+                cursor, keys = self._redis.scan(cursor, match="qjob:*", count=100)
+                for key in keys:
+                    raw = self._redis.get(key)
+                    if raw:
+                        d = json.loads(raw)
+                        self._jobs[d["job_id"]] = QuantumJob(**{**d,"status":JobStatus(d["status"])})
+                if cursor == 0:
+                    break
         except Exception as e:
             logger.warning("Redis unavailable (%s) — using in-memory only", e)
             self._redis = None

@@ -1,12 +1,18 @@
-"""api/routes/circuits.py — POST /run and POST /run/circuit"""
+"""api/routes/circuits.py — POST /run, POST /run/circuit, POST /run/train, GET /run/circuit/draw"""
 from __future__ import annotations
 import logging, math, random
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import PlainTextResponse
 from api.dependencies import get_executor
-from api.schemas import CircuitTypeRequest, JobResponse, RunCircuitRequest
-from core.circuit_factory import build_bell_state, build_ghz_state, build_variational_bottleneck
+from api.schemas import CircuitTypeRequest, JobResponse, RunCircuitRequest, TrainRequest, TrainResponse
+from core.circuit_factory import (
+    build_bell_state, build_ghz_state, build_variational_bottleneck,
+    build_amplitude_encoding,
+)
 from core.executor import QuantumExecutor
 from core.quantum_backend import BackendMode
+from training.trainer import VariationalTrainer, TrainingConfig
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/run", tags=["circuits"])
@@ -19,7 +25,8 @@ async def run_variational(req: RunCircuitRequest, executor: QuantumExecutor = De
     except ValueError as e:
         raise HTTPException(422, str(e))
     try:
-        job = executor.run(
+        job = await run_in_threadpool(
+            executor.run,
             circuit=circuit, mode=BackendMode(req.backend_mode),
             shots=req.shots, optimization_level=req.optimization_level,
             preferred_device=req.preferred_device, async_mode=req.async_mode,
@@ -44,10 +51,68 @@ async def run_named(req: CircuitTypeRequest, executor: QuantumExecutor = Depends
     else:
         raise HTTPException(400, f"Unknown circuit_type: {req.circuit_type!r}")
     try:
-        job = executor.run(
+        job = await run_in_threadpool(
+            executor.run,
             circuit=circuit, mode=BackendMode(req.backend_mode),
             shots=req.shots, preferred_device=req.preferred_device, async_mode=req.async_mode,
         )
     except RuntimeError as e:
         raise HTTPException(500, str(e))
     return JobResponse(**job.to_dict())
+
+
+@router.post("/train", response_model=TrainResponse, summary="Run server-side variational training")
+async def run_training(req: TrainRequest, executor: QuantumExecutor = Depends(get_executor)):
+    """
+    Server-side parameter-shift training. Runs entirely on the local simulator.
+    Returns the full training history including loss curve and best parameters.
+    """
+    config = TrainingConfig(
+        n_qubits=len(req.input_data),
+        learning_rate=req.learning_rate,
+        max_iterations=req.max_iterations,
+        shots=req.shots,
+        convergence_threshold=req.convergence_threshold,
+    )
+    trainer = VariationalTrainer(config=config, executor=executor)
+    try:
+        history = await run_in_threadpool(trainer.train, req.input_data, req.thetas)
+    except Exception as e:
+        raise HTTPException(500, f"Training failed: {e}")
+    return TrainResponse(
+        losses=history.losses,
+        best_loss=history.best_loss,
+        best_thetas=history.best_thetas,
+        iterations_run=history.iterations_run,
+        converged=history.converged,
+        elapsed_seconds=history.elapsed_seconds,
+    )
+
+
+@router.get("/circuit/draw", summary="Get ASCII circuit diagram")
+async def draw_circuit(
+    circuit_type: str = "bell",
+    n_qubits: int = 2,
+):
+    """Returns an ASCII art representation of the requested circuit."""
+    if circuit_type == "bell":
+        qc = build_bell_state()
+    elif circuit_type == "ghz":
+        qc = build_ghz_state(n_qubits)
+    elif circuit_type == "variational":
+        qc = build_variational_bottleneck(
+            n_qubits,
+            [random.uniform(0, math.pi) for _ in range(n_qubits)],
+            [random.uniform(0, math.pi) for _ in range(n_qubits)],
+        )
+    elif circuit_type == "amplitude":
+        qc = build_amplitude_encoding([1.0 / (i + 1) for i in range(n_qubits)])
+    else:
+        raise HTTPException(400, f"Unknown circuit_type: {circuit_type!r}")
+
+    try:
+        diagram = qc.draw(output="text").__str__()
+    except Exception:
+        diagram = str(qc)
+
+    return PlainTextResponse(content=diagram, media_type="text/plain")
