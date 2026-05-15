@@ -8,7 +8,12 @@ from api.dependencies import get_executor
 from api.schemas import CircuitTypeRequest, JobResponse, RunCircuitRequest, TrainRequest, TrainResponse, QasmRunRequest
 from core.circuit_factory import (
     build_bell_state, build_ghz_state, build_variational_bottleneck,
-    build_amplitude_encoding,
+    build_amplitude_encoding, build_w_state, build_qft, build_iqft,
+    build_grover, build_bernstein_vazirani, build_dj_algo, build_qaoa_maxcut,
+    build_random_circuit, build_hwea, build_quantum_volume, build_cluster_state,
+    build_graph_state, build_teleportation, build_superdense_coding,
+    build_swap_test, build_simon_algo, build_phase_estimation, build_vqe_ansatz,
+    build_entanglement_swapping, build_shor_dummy
 )
 from core.executor import QuantumExecutor
 from core.quantum_backend import BackendMode
@@ -52,6 +57,26 @@ async def run_named(req: CircuitTypeRequest, executor: QuantumExecutor = Depends
             n, [random.uniform(0, math.pi) for _ in range(n)],
                [random.uniform(0, math.pi) for _ in range(n)],
         )
+    elif req.circuit_type == "w_state": circuit = build_w_state(req.n_qubits)
+    elif req.circuit_type == "qft": circuit = build_qft(req.n_qubits)
+    elif req.circuit_type == "iqft": circuit = build_iqft(req.n_qubits)
+    elif req.circuit_type == "grover": circuit = build_grover(req.n_qubits)
+    elif req.circuit_type == "bv": circuit = build_bernstein_vazirani(req.n_qubits)
+    elif req.circuit_type == "dj": circuit = build_dj_algo(req.n_qubits)
+    elif req.circuit_type == "qaoa": circuit = build_qaoa_maxcut(req.n_qubits)
+    elif req.circuit_type == "random": circuit = build_random_circuit(req.n_qubits)
+    elif req.circuit_type == "hwea": circuit = build_hwea(req.n_qubits)
+    elif req.circuit_type == "qv": circuit = build_quantum_volume(req.n_qubits)
+    elif req.circuit_type == "cluster": circuit = build_cluster_state(req.n_qubits)
+    elif req.circuit_type == "graph": circuit = build_graph_state(req.n_qubits)
+    elif req.circuit_type == "teleportation": circuit = build_teleportation(req.n_qubits)
+    elif req.circuit_type == "superdense": circuit = build_superdense_coding(req.n_qubits)
+    elif req.circuit_type == "swap_test": circuit = build_swap_test(req.n_qubits)
+    elif req.circuit_type == "simon": circuit = build_simon_algo(req.n_qubits)
+    elif req.circuit_type == "qpe": circuit = build_phase_estimation(req.n_qubits)
+    elif req.circuit_type == "vqe": circuit = build_vqe_ansatz(req.n_qubits)
+    elif req.circuit_type == "ent_swap": circuit = build_entanglement_swapping(req.n_qubits)
+    elif req.circuit_type == "shor_dummy": circuit = build_shor_dummy(req.n_qubits)
     else:
         raise HTTPException(400, f"Unknown circuit_type: {req.circuit_type!r}")
     try:

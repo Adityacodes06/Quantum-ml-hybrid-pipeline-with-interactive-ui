@@ -446,6 +446,108 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
           <div class="qn">Benchmark All</div>
           <div class="qd">Run Bell + GHZ3 + Variational2 in sequence</div>
         </div>
+        
+        <!-- NEW 20 CIRCUITS -->
+        <div class="qcard" onclick="runQuick('w_state', 3)">
+          <div class="qi2">🌊</div>
+          <div class="qn">W State 3Q</div>
+          <div class="qd">Equal superposition of single excitations</div>
+        </div>
+        <div class="qcard" onclick="runQuick('qft', 3)">
+          <div class="qi2">🌊</div>
+          <div class="qn">QFT 3Q</div>
+          <div class="qd">Quantum Fourier Transform circuit</div>
+        </div>
+        <div class="qcard" onclick="runQuick('iqft', 3)">
+          <div class="qi2">⏪</div>
+          <div class="qn">Inverse QFT 3Q</div>
+          <div class="qd">Inverse Quantum Fourier Transform</div>
+        </div>
+        <div class="qcard" onclick="runQuick('grover', 3)">
+          <div class="qi2">🔍</div>
+          <div class="qn">Grover's Search</div>
+          <div class="qd">Unstructured search on 3 qubits</div>
+        </div>
+        <div class="qcard" onclick="runQuick('bv', 4)">
+          <div class="qi2">🕵️‍♂️</div>
+          <div class="qn">Bernstein-Vazirani</div>
+          <div class="qd">Find hidden string in 1 query</div>
+        </div>
+        <div class="qcard" onclick="runQuick('dj', 3)">
+          <div class="qi2">⚖️</div>
+          <div class="qn">Deutsch-Jozsa</div>
+          <div class="qd">Constant vs Balanced oracle check</div>
+        </div>
+        <div class="qcard" onclick="runQuick('qaoa', 4)">
+          <div class="qi2">🌐</div>
+          <div class="qn">QAOA MaxCut</div>
+          <div class="qd">MaxCut approximation on 4-node ring</div>
+        </div>
+        <div class="qcard" onclick="runQuick('random', 4)">
+          <div class="qi2">🎲</div>
+          <div class="qn">Random Circuit</div>
+          <div class="qd">Random Clifford+T gates on 4 qubits</div>
+        </div>
+        <div class="qcard" onclick="runQuick('hwea', 4)">
+          <div class="qi2">⚙️</div>
+          <div class="qn">Hardware Efficient</div>
+          <div class="qd">RY+RZ+CX 2-rep structure</div>
+        </div>
+        <div class="qcard" onclick="runQuick('qv', 4)">
+          <div class="qi2">🕋</div>
+          <div class="qn">Quantum Volume</div>
+          <div class="qd">Standard quantum volume benchmark</div>
+        </div>
+        <div class="qcard" onclick="runQuick('cluster', 4)">
+          <div class="qi2">🔗</div>
+          <div class="qn">Cluster State</div>
+          <div class="qd">Linear cluster state (MBQC)</div>
+        </div>
+        <div class="qcard" onclick="runQuick('graph', 4)">
+          <div class="qi2">🕸️</div>
+          <div class="qn">Graph State</div>
+          <div class="qd">Graph state on a 4-node cycle</div>
+        </div>
+        <div class="qcard" onclick="runQuick('teleportation', 3)">
+          <div class="qi2">✨</div>
+          <div class="qn">Teleportation</div>
+          <div class="qd">Quantum Teleportation protocol</div>
+        </div>
+        <div class="qcard" onclick="runQuick('superdense', 2)">
+          <div class="qi2">📦</div>
+          <div class="qn">Superdense Coding</div>
+          <div class="qd">Transmit 2 classical bits in 1 qubit</div>
+        </div>
+        <div class="qcard" onclick="runQuick('swap_test', 3)">
+          <div class="qi2">🔀</div>
+          <div class="qn">Swap Test</div>
+          <div class="qd">Overlap test between two quantum states</div>
+        </div>
+        <div class="qcard" onclick="runQuick('simon', 4)">
+          <div class="qi2">👯</div>
+          <div class="qn">Simon's Algorithm</div>
+          <div class="qd">Period finding for 2-to-1 functions</div>
+        </div>
+        <div class="qcard" onclick="runQuick('qpe', 3)">
+          <div class="qi2">⏱️</div>
+          <div class="qn">Phase Estimation</div>
+          <div class="qd">QPE for a simple phase gate</div>
+        </div>
+        <div class="qcard" onclick="runQuick('vqe', 4)">
+          <div class="qi2">🧪</div>
+          <div class="qn">VQE Ansatz</div>
+          <div class="qd">TwoLocal parameterized heuristic</div>
+        </div>
+        <div class="qcard" onclick="runQuick('ent_swap', 4)">
+          <div class="qi2">🔀</div>
+          <div class="qn">Entangle Swapping</div>
+          <div class="qd">Distribute entanglement distantly</div>
+        </div>
+        <div class="qcard" onclick="runQuick('shor_dummy', 4)">
+          <div class="qi2">🔢</div>
+          <div class="qn">Shor's (Demo)</div>
+          <div class="qd">Skeleton structure for period finding</div>
+        </div>
       </div>
     </div>
 

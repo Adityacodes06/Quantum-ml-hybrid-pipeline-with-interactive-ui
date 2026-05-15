@@ -33,8 +33,8 @@ class RunCircuitRequest(BaseModel):
 
 
 class CircuitTypeRequest(BaseModel):
-    circuit_type: Literal["bell","ghz","variational"] = "bell"
-    n_qubits: int = Field(2, ge=2, le=settings.max_qubits)
+    circuit_type: str = Field("bell", description="bell, ghz, variational, qft, w_state, etc.")
+    n_qubits: int = Field(2, ge=1, le=settings.max_qubits)
     backend_mode: Literal["simulator","noisy_simulator","real"] = "simulator"
     shots: int = Field(settings.default_shots, ge=1, le=settings.max_shots)
     async_mode: bool = False
