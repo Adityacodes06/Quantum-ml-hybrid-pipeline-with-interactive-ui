@@ -123,6 +123,38 @@ class HealthResponse(BaseModel):
     available_modes: List[str] = ["simulator","noisy_simulator"]
 
 
+class DensityMatrixRequest(BaseModel):
+    """Request model for generating density matrix from a circuit."""
+    input_data: List[float] = Field(..., min_length=1, max_length=settings.max_qubits,
+        description="Classical input features, one per qubit")
+    thetas: List[float] = Field(..., min_length=1, max_length=settings.max_qubits,
+        description="Variational parameters, one per qubit")
+    encode_gate: Literal["rx", "ry", "rz"] = "ry"
+    entangle_type: Literal["linear", "circular", "full", "none"] = "linear"
+    var_gate: Literal["rx", "ry", "rz"] = "ry"
+    circuit_type: Optional[str] = Field(None, description="Named circuit type (overrides input_data/thetas if set)")
+    n_qubits: Optional[int] = Field(None, ge=1, le=settings.max_qubits)
+
+    @field_validator("thetas")
+    @classmethod
+    def lengths_match(cls, v, info):
+        inp = info.data.get("input_data", [])
+        if inp and len(v) != len(inp):
+            raise ValueError(f"thetas length ({len(v)}) must equal input_data length ({len(inp)})")
+        return v
+
+
+class DensityMatrixResponse(BaseModel):
+    """Response model for density matrix computation."""
+    num_qubits: int
+    dimension: int
+    statevector: List[str] = Field(description="Statevector amplitudes as complex strings")
+    density_matrix: List[List[str]] = Field(description="Density matrix entries as complex strings")
+    probabilities: Dict[str, float] = Field(description="Measurement probabilities per basis state")
+    purity: float = Field(description="Tr(ρ²) — 1.0 for pure states")
+    von_neumann_entropy: float = Field(description="Von Neumann entropy S(ρ)")
+
+
 class ErrorResponse(BaseModel):
     detail: str
     error_type: Optional[str] = None

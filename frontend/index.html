@@ -266,6 +266,51 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
 
 /* ── Server train toggle ───────────────────────────────────────────────── */
 .strow{display:flex;align-items:center;gap:9px;padding:0 2px;margin-bottom:10px;margin-top:6px}
+
+/* ── Density Matrix Section ─────────────────────────────────────────────── */
+.dm-section{margin-top:16px}
+.dm-header{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0;margin-bottom:8px;transition:.15s}
+.dm-header:hover .dm-title{color:var(--text)}
+.dm-title{font-family:var(--font-m);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px;transition:.15s}
+.dm-toggle{font-size:10px;color:var(--muted);transition:transform .25s ease}
+.dm-section.open .dm-toggle{transform:rotate(180deg)}
+.dm-body{display:none;flex-direction:column;gap:10px}
+.dm-section.open .dm-body{display:flex}
+
+.dm-results{animation:si .28s ease}
+.dm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px}
+.dm-stat{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.dm-stat-label{font-family:var(--font-m);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.dm-stat-value{font-family:var(--font-m);font-size:15px;font-weight:600}
+.dm-stat-value.purple{color:var(--purple)}
+.dm-stat-value.cyan{color:var(--sim)}
+.dm-stat-value.green{color:var(--noisy)}
+
+.dm-sub{font-family:var(--font-m);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:14px 0 8px;display:flex;align-items:center;gap:6px}
+.dm-sub::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.sv-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.sv-item{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:var(--font-m);font-size:10px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:80px;transition:.15s}
+.sv-item:hover{border-color:var(--purple);transform:translateY(-1px)}
+.sv-basis{color:var(--sim);font-size:9px}
+.sv-amp{color:var(--text)}
+.sv-prob{color:var(--muted);font-size:8px}
+
+.dm-grid-wrap{overflow-x:auto;margin-bottom:6px;border-radius:8px;border:1px solid var(--border)}
+.dm-grid{display:grid;gap:0;font-family:var(--font-m);font-size:9px;min-width:max-content}
+.dm-cell{padding:6px 4px;text-align:center;border:1px solid var(--border);transition:background .15s;min-width:65px;position:relative}
+.dm-cell:hover{z-index:2;box-shadow:0 0 12px rgba(167,139,250,.3)}
+.dm-cell-header{background:var(--surface);color:var(--muted);font-weight:600;font-size:8px;border:1px solid var(--border);
+  padding:6px 4px;text-align:center;min-width:65px;position:sticky;top:0}
+.dm-cell-row-header{background:var(--surface);color:var(--muted);font-weight:600;font-size:8px;border:1px solid var(--border);
+  padding:6px 4px;text-align:center;min-width:40px;position:sticky;left:0;z-index:1}
+.dm-cell-corner{background:var(--surface);border:1px solid var(--border);padding:6px;min-width:40px;position:sticky;left:0;top:0;z-index:2}
+
+.dm-prob-bar{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-family:var(--font-m);font-size:10px}
+.dm-prob-label{color:var(--sim);min-width:50px;text-align:right}
+.dm-prob-track{flex:1;height:14px;background:var(--surface2);border-radius:7px;overflow:hidden;border:1px solid var(--border)}
+.dm-prob-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--purple),var(--sim));transition:width .5s cubic-bezier(.16,1,.3,1)}
+.dm-prob-val{color:var(--muted2);min-width:45px;font-size:9px}
 </style>
 </head>
 <body>
@@ -405,6 +450,21 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.35)}
         <button class="ebtn" onclick="exportQASM()" aria-label="Export circuit as QASM">📋 Export QASM</button>
         <button class="ebtn" onclick="viewCircuitASCII()" aria-label="View ASCII circuit diagram">🔤 ASCII Diagram</button>
       </div>
+
+      <!-- Density Matrix Section -->
+      <div class="dm-section" id="dmSection">
+        <div class="dm-header" onclick="toggleDMSection()">
+          <span class="dm-title">🔬 Quantum State Output & Density Matrix</span>
+          <span class="dm-toggle">▾</span>
+        </div>
+        <div class="dm-body">
+          <button class="ebtn" id="dmBtn" onclick="generateDensityMatrix()" style="width:100%" aria-label="Generate density matrix">
+            <span id="dmBtnTxt">⊗ Generate Density Matrix</span>
+          </button>
+          <div id="dmResults"></div>
+        </div>
+      </div>
+
       <div class="ct" style="margin-top:24px">◈ Custom QASM</div>
       <textarea id="qasmBox" rows="4" placeholder="OPENQASM 2.0;\ninclude &#34;qelib1.inc&#34;;\n..." style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--font-m);font-size:10px;padding:8px;border-radius:6px;outline:none;resize:vertical"></textarea>
       <button class="ebtn" onclick="runQASM()" style="margin-top:8px;width:100%">▶ Run Custom QASM</button>
@@ -1199,6 +1259,328 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   }
   document.getElementById('apiUrl').value = defaultUrl;
 })();
+
+// ── density matrix ─────────────────────────────────────────────────────────
+let _lastDMData = null;  // cache for export
+
+function toggleDMSection() {
+  document.getElementById('dmSection').classList.toggle('open');
+}
+
+async function generateDensityMatrix() {
+  const btn = document.getElementById('dmBtn');
+  const txt = document.getElementById('dmBtnTxt');
+  const resultsDiv = document.getElementById('dmResults');
+  
+  btn.style.pointerEvents = 'none';
+  btn.style.opacity = '0.5';
+  txt.innerHTML = 'Computing…<span class="sp"></span>';
+  resultsDiv.innerHTML = '';
+  
+  try {
+    const res = await fetch(`${api()}/run/statevector`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        input_data: qubits.map(q => q.x),
+        thetas: qubits.map(q => q.t),
+        encode_gate: document.getElementById('encGate').value,
+        entangle_type: document.getElementById('entType').value,
+        var_gate: document.getElementById('varGate').value
+      })
+    });
+    
+    if (!res.ok) {
+      const e = await res.json();
+      throw new Error(e.detail || `HTTP ${res.status}`);
+    }
+    
+    const data = await res.json();
+    _lastDMData = data;  // cache for export
+    resultsDiv.innerHTML = renderDensityMatrix(data);
+    toast('Density matrix computed ✓');
+  } catch(e) {
+    toast(e.message, 1);
+    resultsDiv.innerHTML = `<div style="font-family:var(--font-m);font-size:11px;color:var(--danger);padding:12px">⚠ ${e.message}</div>`;
+  } finally {
+    btn.style.pointerEvents = '';
+    btn.style.opacity = '';
+    txt.textContent = '⊗ Generate Density Matrix';
+  }
+}
+
+function renderDensityMatrix(data) {
+  const { num_qubits, dimension, statevector, density_matrix, probabilities, purity, von_neumann_entropy } = data;
+  const basisStates = Object.keys(probabilities).sort();
+  
+  // ── Export row ──
+  let html = `<div class="dm-results">`;
+  html += `<div class="export-row">`;
+  html += `<button class="ebtn" onclick="downloadDMReport('json')">📄 Export JSON</button>`;
+  html += `<button class="ebtn" onclick="downloadDMReport('csv')">📊 Export CSV</button>`;
+  html += `<button class="ebtn" onclick="downloadDMReport('txt')">📝 Export TXT</button>`;
+  html += `</div>`;
+
+  // ── Stats cards ──
+  html += `<div class="dm-stats">`;
+  html += `<div class="dm-stat"><div class="dm-stat-label">Qubits</div><div class="dm-stat-value cyan">${num_qubits}</div></div>`;
+  html += `<div class="dm-stat"><div class="dm-stat-label">Hilbert Dim</div><div class="dm-stat-value purple">${dimension}×${dimension}</div></div>`;
+  html += `<div class="dm-stat"><div class="dm-stat-label">Purity Tr(ρ²)</div><div class="dm-stat-value green">${purity.toFixed(6)}</div></div>`;
+  html += `<div class="dm-stat"><div class="dm-stat-label">Von Neumann S</div><div class="dm-stat-value" style="color:var(--real)">${von_neumann_entropy.toFixed(6)}</div></div>`;
+  html += `</div>`;
+
+  // ── Statevector ──
+  html += `<div class="dm-sub">|ψ⟩ Statevector Amplitudes</div>`;
+  html += `<div class="sv-grid">`;
+  basisStates.forEach((bs, i) => {
+    const amp = statevector[i] || '0';
+    const prob = probabilities[bs] || 0;
+    html += `<div class="sv-item">`;
+    html += `<span class="sv-basis">|${bs}⟩</span>`;
+    html += `<span class="sv-amp">${amp}</span>`;
+    html += `<span class="sv-prob">${(prob * 100).toFixed(2)}%</span>`;
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  // ── Probability bars ──
+  html += `<div class="dm-sub">Measurement Probabilities</div>`;
+  const maxProb = Math.max(...Object.values(probabilities), 0.001);
+  basisStates.forEach(bs => {
+    const p = probabilities[bs] || 0;
+    html += `<div class="dm-prob-bar">`;
+    html += `<span class="dm-prob-label">|${bs}⟩</span>`;
+    html += `<div class="dm-prob-track"><div class="dm-prob-fill" style="width:${(p/maxProb)*100}%"></div></div>`;
+    html += `<span class="dm-prob-val">${(p*100).toFixed(2)}%</span>`;
+    html += `</div>`;
+  });
+
+  // ── Density Matrix Grid ──
+  html += `<div class="dm-sub">ρ = |ψ⟩⟨ψ| Density Matrix</div>`;
+  
+  // For large matrices (>6 qubits = 64x64), show a warning
+  if (dimension > 64) {
+    html += `<div style="font-family:var(--font-m);font-size:10px;color:var(--real);margin-bottom:8px">⚠ Large matrix (${dimension}×${dimension}) — showing magnitude heatmap only</div>`;
+    html += renderDMHeatmapCanvas(density_matrix, basisStates, dimension);
+  } else {
+    html += `<div class="dm-grid-wrap"><div class="dm-grid" style="grid-template-columns:40px repeat(${dimension},1fr)">`;
+    // Corner cell
+    html += `<div class="dm-cell-corner">ρ</div>`;
+    // Column headers
+    basisStates.forEach(bs => {
+      html += `<div class="dm-cell-header">|${bs}⟩</div>`;
+    });
+    // Rows
+    density_matrix.forEach((row, ri) => {
+      html += `<div class="dm-cell-row-header">⟨${basisStates[ri]}|</div>`;
+      row.forEach((val, ci) => {
+        const mag = parseMagnitude(val);
+        const opacity = Math.min(mag * 1.5, 1);
+        const isDiagonal = ri === ci;
+        const bg = isDiagonal
+          ? `rgba(34,211,238,${opacity * 0.35})`
+          : `rgba(167,139,250,${opacity * 0.3})`;
+        html += `<div class="dm-cell" style="background:${bg};color:${opacity > 0.01 ? 'var(--text)' : 'var(--muted)'}" title="ρ[${basisStates[ri]},${basisStates[ci]}] = ${val}">${formatDMVal(val)}</div>`;
+      });
+    });
+    html += `</div></div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function downloadDMReport(format) {
+  if (!_lastDMData) { toast('Generate a density matrix first', 1); return; }
+  const d = _lastDMData;
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const nq = d.num_qubits;
+  const basisStates = Object.keys(d.probabilities).sort();
+
+  if (format === 'json') {
+    // ── Full structured JSON ──
+    const report = {
+      metadata: {
+        generated_at: new Date().toISOString(),
+        generator: 'QuantumML Control Centre',
+        num_qubits: nq,
+        hilbert_dimension: d.dimension,
+        circuit_params: {
+          input_data: qubits.map(q => q.x),
+          thetas: qubits.map(q => q.t),
+          encode_gate: document.getElementById('encGate').value,
+          entangle_type: document.getElementById('entType').value,
+          var_gate: document.getElementById('varGate').value
+        }
+      },
+      quantum_state: {
+        statevector: {},
+        probabilities: d.probabilities,
+        purity: d.purity,
+        von_neumann_entropy: d.von_neumann_entropy,
+        is_pure: d.purity > 0.9999
+      },
+      density_matrix: {
+        dimension: `${d.dimension}x${d.dimension}`,
+        rows: {}
+      }
+    };
+    // Statevector with labeled basis states
+    basisStates.forEach((bs, i) => {
+      report.quantum_state.statevector[`|${bs}⟩`] = {
+        amplitude: d.statevector[i],
+        probability: d.probabilities[bs]
+      };
+    });
+    // Density matrix with labeled rows/cols
+    d.density_matrix.forEach((row, ri) => {
+      const rowObj = {};
+      row.forEach((val, ci) => {
+        rowObj[`|${basisStates[ci]}⟩`] = val;
+      });
+      report.density_matrix.rows[`⟨${basisStates[ri]}|`] = rowObj;
+    });
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    triggerDownload(blob, `quantum_state_${nq}q_${ts}.json`);
+    toast('JSON report downloaded ✓');
+
+  } else if (format === 'csv') {
+    // ── CSV with density matrix + statevector sheet ──
+    let csv = '# Quantum State Report\n';
+    csv += `# Generated: ${new Date().toISOString()}\n`;
+    csv += `# Qubits: ${nq}, Dimension: ${d.dimension}, Purity: ${d.purity.toFixed(6)}, Entropy: ${d.von_neumann_entropy.toFixed(6)}\n\n`;
+    // Statevector section
+    csv += '# STATEVECTOR\n';
+    csv += 'Basis State,Amplitude,Probability\n';
+    basisStates.forEach((bs, i) => {
+      csv += `|${bs}>,${d.statevector[i]},${d.probabilities[bs]}\n`;
+    });
+    csv += '\n';
+    // Density matrix section
+    csv += '# DENSITY MATRIX\n';
+    csv += ',' + basisStates.map(bs => `|${bs}>`).join(',') + '\n';
+    d.density_matrix.forEach((row, ri) => {
+      csv += `<${basisStates[ri]}|,` + row.join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    triggerDownload(blob, `quantum_state_${nq}q_${ts}.csv`);
+    toast('CSV report downloaded ✓');
+
+  } else if (format === 'txt') {
+    // ── Human-readable plain text report ──
+    let txt = '╔══════════════════════════════════════════════════════════════╗\n';
+    txt +=    '║         QUANTUM STATE OUTPUT — DENSITY MATRIX REPORT        ║\n';
+    txt +=    '╚══════════════════════════════════════════════════════════════╝\n\n';
+    txt += `Generated : ${new Date().toISOString()}\n`;
+    txt += `Generator : QuantumML Control Centre\n\n`;
+    txt += `═══ CIRCUIT PARAMETERS ═══\n`;
+    txt += `  Qubits           : ${nq}\n`;
+    txt += `  Input data (x)   : [${qubits.map(q => q.x.toFixed(4)).join(', ')}]\n`;
+    txt += `  Thetas (θ)       : [${qubits.map(q => q.t.toFixed(4)).join(', ')}]\n`;
+    txt += `  Encode gate      : ${document.getElementById('encGate').value.toUpperCase()}\n`;
+    txt += `  Entangle type    : ${document.getElementById('entType').value}\n`;
+    txt += `  Variational gate : ${document.getElementById('varGate').value.toUpperCase()}\n\n`;
+    txt += `═══ STATE PROPERTIES ═══\n`;
+    txt += `  Hilbert dimension : ${d.dimension}×${d.dimension}\n`;
+    txt += `  Purity Tr(ρ²)     : ${d.purity.toFixed(8)}\n`;
+    txt += `  Von Neumann S     : ${d.von_neumann_entropy.toFixed(8)}\n`;
+    txt += `  Pure state?       : ${d.purity > 0.9999 ? 'YES' : 'NO'}\n\n`;
+    txt += `═══ |ψ⟩ STATEVECTOR ═══\n`;
+    basisStates.forEach((bs, i) => {
+      const amp = d.statevector[i];
+      const prob = d.probabilities[bs];
+      txt += `  |${bs}⟩  →  ${amp.padEnd(24)} P = ${(prob * 100).toFixed(4)}%\n`;
+    });
+    txt += '\n';
+    txt += `═══ ρ = |ψ⟩⟨ψ| DENSITY MATRIX ═══\n\n`;
+    // Header row
+    const colW = 14;
+    txt += ''.padEnd(8);
+    basisStates.forEach(bs => { txt += `|${bs}⟩`.padStart(colW); });
+    txt += '\n';
+    txt += ''.padEnd(8) + '─'.repeat(colW * d.dimension) + '\n';
+    d.density_matrix.forEach((row, ri) => {
+      txt += `⟨${basisStates[ri]}| `.padEnd(8);
+      row.forEach(val => { txt += val.padStart(colW); });
+      txt += '\n';
+    });
+    txt += '\n═══ END OF REPORT ═══\n';
+    const blob = new Blob([txt], { type: 'text/plain' });
+    triggerDownload(blob, `quantum_state_${nq}q_${ts}.txt`);
+    toast('Text report downloaded ✓');
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+
+function parseMagnitude(complexStr) {
+  // Parse strings like "0.500000", "+0.500000i", "0.353553+0.353553i"
+  const s = complexStr.trim();
+  if (s.includes('i')) {
+    // Has imaginary part
+    const match = s.match(/^([+-]?[\d.]+)?([+-][\d.]+)i$/);
+    if (match) {
+      const re = parseFloat(match[1] || '0');
+      const im = parseFloat(match[2]);
+      return Math.sqrt(re*re + im*im);
+    }
+    // Pure imaginary
+    const pureIm = s.match(/^([+-]?[\d.]+)i$/);
+    if (pureIm) return Math.abs(parseFloat(pureIm[1]));
+  }
+  return Math.abs(parseFloat(s) || 0);
+}
+
+function formatDMVal(val) {
+  const mag = parseMagnitude(val);
+  if (mag < 1e-6) return '·';
+  // Shorten for display
+  const s = val.trim();
+  if (s.includes('i')) {
+    return s.replace(/([\d]+\.\d{3})\d+/g, '$1');
+  }
+  const n = parseFloat(s);
+  if (!isNaN(n)) return n.toFixed(3);
+  return s;
+}
+
+function renderDMHeatmapCanvas(dm, basis, dim) {
+  // For large matrices, render as a canvas-based heatmap
+  const id = 'dmHeatmap' + Date.now();
+  setTimeout(() => {
+    const cv = document.getElementById(id);
+    if (!cv) return;
+    const size = Math.min(400, dim * 6);
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = size * dpr; cv.height = size * dpr;
+    cv.style.width = size + 'px'; cv.style.height = size + 'px';
+    const ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const cellSize = size / dim;
+    dm.forEach((row, ri) => {
+      row.forEach((val, ci) => {
+        const mag = parseMagnitude(val);
+        const intensity = Math.min(mag * 2, 1);
+        const isDiag = ri === ci;
+        if (isDiag) {
+          ctx.fillStyle = `rgba(34,211,238,${intensity})`;
+        } else {
+          ctx.fillStyle = `rgba(167,139,250,${intensity})`;
+        }
+        ctx.fillRect(ci * cellSize, ri * cellSize, cellSize, cellSize);
+      });
+    });
+  }, 50);
+  return `<canvas id="${id}" style="border-radius:8px;border:1px solid var(--border);display:block;margin:0 auto"></canvas>`;
+}
 
 // ── init ───────────────────────────────────────────────────────────────────
 renderQubits();

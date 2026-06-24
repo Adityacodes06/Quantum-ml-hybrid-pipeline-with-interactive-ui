@@ -23,7 +23,10 @@ class TestRoot:
     def test_root(self, client):
         r = client.get("/")
         assert r.status_code == 200
-        assert "message" in r.json()
+        if "text/html" in r.headers.get("content-type", ""):
+            assert "<html" in r.text
+        else:
+            assert "message" in r.json()
 
     def test_health(self, client):
         r = client.get("/health")

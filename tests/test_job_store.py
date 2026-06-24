@@ -125,6 +125,7 @@ class TestJobStore:
                         num_qubits=2, circuit_depth=1, circuit_name=f"t{start}_{i}",
                         shots=100, optimization_level=0,
                     )
+                    job.status = JobStatus.COMPLETED  # Mark as terminal so eviction can kick in
                     store.save(job)
             except Exception as e:
                 errors.append(e)

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 from api.dependencies import get_executor
-from api.schemas import CircuitTypeRequest, JobResponse, RunCircuitRequest, TrainRequest, TrainResponse, QasmRunRequest
+from api.schemas import CircuitTypeRequest, JobResponse, RunCircuitRequest, TrainRequest, TrainResponse, QasmRunRequest, DensityMatrixRequest, DensityMatrixResponse
 from core.circuit_factory import (
     build_bell_state, build_ghz_state, build_variational_bottleneck,
     build_amplitude_encoding, build_w_state, build_qft, build_iqft,
@@ -195,3 +195,130 @@ async def run_qasm_route(req: QasmRunRequest, executor: QuantumExecutor = Depend
     except RuntimeError as e:
         raise HTTPException(500, str(e))
     return JobResponse(**job.to_dict())
+
+
+@router.post("/statevector", response_model=DensityMatrixResponse, summary="Compute density matrix from circuit state")
+async def compute_density_matrix(req: DensityMatrixRequest):
+    """
+    Builds the circuit WITHOUT measurements, evolves |0⟩^n through it,
+    and returns the full statevector, density matrix ρ = |ψ⟩⟨ψ|,
+    measurement probabilities, purity Tr(ρ²), and von Neumann entropy.
+    """
+    import numpy as np
+    from qiskit.quantum_info import Statevector, DensityMatrix, entropy
+
+    # ── Build circuit (without measurement gates) ──────────────────────
+    if req.circuit_type:
+        # Named circuit — strip measurements
+        ct = req.circuit_type
+        nq = req.n_qubits or len(req.input_data)
+        if ct == "bell": qc = build_bell_state()
+        elif ct == "ghz": qc = build_ghz_state(nq)
+        elif ct == "variational":
+            qc = build_variational_bottleneck(
+                nq, [random.uniform(0, math.pi) for _ in range(nq)],
+                     [random.uniform(0, math.pi) for _ in range(nq)])
+        elif ct == "w_state": qc = build_w_state(nq)
+        elif ct == "qft": qc = build_qft(nq)
+        elif ct == "iqft": qc = build_iqft(nq)
+        elif ct == "grover": qc = build_grover(nq)
+        elif ct == "bv": qc = build_bernstein_vazirani(nq)
+        elif ct == "dj": qc = build_dj_algo(nq)
+        elif ct == "qaoa": qc = build_qaoa_maxcut(nq)
+        elif ct == "random": qc = build_random_circuit(nq)
+        elif ct == "hwea": qc = build_hwea(nq)
+        elif ct == "qv": qc = build_quantum_volume(nq)
+        elif ct == "cluster": qc = build_cluster_state(nq)
+        elif ct == "graph": qc = build_graph_state(nq)
+        elif ct == "teleportation": qc = build_teleportation(nq)
+        elif ct == "superdense": qc = build_superdense_coding(nq)
+        elif ct == "swap_test": qc = build_swap_test(nq)
+        elif ct == "simon": qc = build_simon_algo(nq)
+        elif ct == "qpe": qc = build_phase_estimation(nq)
+        elif ct == "vqe": qc = build_vqe_ansatz(nq)
+        elif ct == "ent_swap": qc = build_entanglement_swapping(nq)
+        elif ct == "shor_dummy": qc = build_shor_dummy(nq)
+        else:
+            raise HTTPException(400, f"Unknown circuit_type: {ct!r}")
+    else:
+        # Variational bottleneck from user inputs
+        try:
+            qc = build_variational_bottleneck(
+                len(req.input_data), req.input_data, req.thetas,
+                encode_gate=req.encode_gate, entangle_type=req.entangle_type,
+                var_gate=req.var_gate
+            )
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    # ── Strip measurement gates to get unitary-only circuit ────────────
+    from qiskit import QuantumCircuit as QC
+    qc_no_meas = QC(qc.num_qubits)
+    for instruction in qc.data:
+        if instruction.operation.name != "measure" and instruction.operation.name != "barrier":
+            qc_no_meas.append(instruction.operation, instruction.qubits, instruction.clbits)
+
+    # ── Compute statevector and density matrix ─────────────────────────
+    try:
+        sv = Statevector.from_instruction(qc_no_meas)
+        dm = DensityMatrix(sv)
+        n_qubits = qc_no_meas.num_qubits
+        dim = 2 ** n_qubits
+
+        # Statevector as formatted strings
+        sv_arr = sv.data
+        sv_strs = []
+        for amp in sv_arr:
+            r, im = amp.real, amp.imag
+            if abs(im) < 1e-10:
+                sv_strs.append(f"{r:.6f}")
+            elif abs(r) < 1e-10:
+                sv_strs.append(f"{im:+.6f}i")
+            else:
+                sv_strs.append(f"{r:.6f}{im:+.6f}i")
+
+        # Density matrix as formatted strings
+        dm_arr = dm.data
+        dm_strs = []
+        for row in dm_arr:
+            row_strs = []
+            for val in row:
+                r, im = val.real, val.imag
+                if abs(im) < 1e-10:
+                    row_strs.append(f"{r:.6f}")
+                elif abs(r) < 1e-10:
+                    row_strs.append(f"{im:+.6f}i")
+                else:
+                    row_strs.append(f"{r:.6f}{im:+.6f}i")
+            dm_strs.append(row_strs)
+
+        # Measurement probabilities
+        probs = sv.probabilities_dict()
+        # Ensure all basis states present
+        prob_dict = {}
+        for i in range(dim):
+            bs = format(i, f"0{n_qubits}b")
+            prob_dict[bs] = float(probs.get(bs, 0.0))
+
+        # Purity: Tr(ρ²)
+        purity = float(np.real(np.trace(dm_arr @ dm_arr)))
+
+        # Von Neumann entropy
+        try:
+            vn_entropy = float(entropy(dm, base=2))
+        except Exception:
+            vn_entropy = 0.0
+
+        return DensityMatrixResponse(
+            num_qubits=n_qubits,
+            dimension=dim,
+            statevector=sv_strs,
+            density_matrix=dm_strs,
+            probabilities=prob_dict,
+            purity=purity,
+            von_neumann_entropy=vn_entropy,
+        )
+    except Exception as e:
+        logger.error("Density matrix computation failed: %s", e)
+        raise HTTPException(500, f"Density matrix computation failed: {e}")
+
